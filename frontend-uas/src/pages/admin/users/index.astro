@@ -1,0 +1,68 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+let users = [];
+
+try {
+    const res = await fetch(`${API_URL}/users`);
+    users = await res.json();
+} catch (e) { console.error(e); }
+---
+
+<DashboardLayout title="Manajemen Users" currentPath="users">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Daftar Kasir / User</h1>
+        <a href="/admin/users/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            + Tambah User
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-gray-700 font-medium border-b border-gray-100">
+                <tr>
+                    <th class="p-4">ID</th>
+                    <th class="p-4">Nama</th>
+                    <th class="p-4">Email</th>
+                    <th class="p-4">Kontak</th>
+                    <th class="p-4 text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {Array.isArray(users) && users.length > 0 ? users.map((user: any) => (
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-4 font-mono text-xs">{user.id}</td>
+                        <td class="p-4 font-medium text-gray-800">{user.name}</td>
+                        <td class="p-4">{user.email}</td>
+                        <td class="p-4">{user.phone}</td>
+                        
+                        <td class="p-4 text-center">
+                            <div class="flex justify-center gap-2">
+                                <a href={`/admin/users/edit/${user.id}`} class="bg-amber-400 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-500 transition">
+                                    Edit
+                                </a>
+                                
+                                <button class="bg-red-500 text-white px-3 py-1.5 rounded text-xs hover:bg-red-600 transition" onclick={`deleteUser('${user.id}')`}>
+                                    Hapus
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                )) : (
+                    <tr><td colspan="5" class="p-6 text-center text-gray-400">Belum ada user</td></tr>
+                )}
+            </tbody>
+        </table>
+    </div>
+</DashboardLayout>
+
+<script define:vars={{ API_URL }}>
+    window.deleteUser = async (id) => {
+        if(!confirm("Hapus user ini?")) return;
+        try {
+            const res = await fetch(`${API_URL}/users/${id}`, { method: 'DELETE' });
+            if(res.ok) window.location.reload();
+            else alert("Gagal menghapus user (Mungkin ada relasi transaksi)");
+        } catch(e) { alert("Error koneksi"); }
+    }
+</script>

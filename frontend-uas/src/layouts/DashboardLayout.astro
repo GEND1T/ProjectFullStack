@@ -1,0 +1,131 @@
+---
+import "../styles/global.css";
+
+// src/layouts/DashboardLayout.astro
+interface Props {
+	title: string;
+    currentPath?: string;
+}
+
+const { title, currentPath } = Astro.props;
+---
+
+<!doctype html>
+<html lang="id">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<title>{title} - Admin Panel</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+	</head>
+	<body class="flex h-screen overflow-hidden">
+        
+        <aside class="w-64 bg-[#2e4a79] text-white flex flex-col flex-shrink-0 transition-all duration-300">
+            <div class="h-32 flex items-center justify-center border-b border-[#2e4a79] bg-[#2e4a79]">
+                <img 
+                    src="/logo.png" 
+                    alt="Genexmart Logo" 
+                    class="h-40 w-auto object-contain" 
+                />
+            </div>
+
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                <a href="/admin/dashboard" class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'dashboard' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="/admin/analysis" 
+                   class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'analysis' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span class="font-medium">Analysis</span>
+                </a>
+                
+                <a href="/admin/products" class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'products' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22v-10"/></svg>
+                    <span>Products</span>
+                </a>
+
+                <a href="/admin/categories" 
+                    class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'categories' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+                    <span>Categories</span>
+                </a>
+
+                <a href="/admin/orders" 
+                   class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'orders' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                        <path d="M12 11h4"></path>
+                        <path d="M12 16h4"></path>
+                        <path d="M8 11h.01"></path>
+                        <path d="M8 16h.01"></path>
+                    </svg>
+
+                    <span class="font-medium">Orders</span>
+                </a>
+
+                <a href="/admin/penjualan" class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'penjualan' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                        <path d="M3 6h18"/>
+                        <path d="M16 10a4 4 0 0 1-8 0"/>
+                    </svg>
+                    <span>Transactions</span>
+                </a>
+
+                <a href="/admin/customers" 
+                class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'customers' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                     <circle cx="9" cy="7" r="4"></circle>
+                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                 </svg>
+                 <span class="font-medium">Customers</span>
+                </a>
+
+                <a href="/admin/users" class={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPath === 'users' ? 'bg-blue-600/50 text-white' : 'text-blue-200 hover:bg-blue-800 hover:text-white'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span>Cashier</span>
+                </a>
+                
+                
+            </nav>
+
+            <div class="p-4 text-xs text-blue-300 text-center border-t border-blue-800">
+                &copy; 2025 Admin Panel
+            </div>
+        </aside>
+
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            
+            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
+                <div class="flex items-center gap-2 text-gray-600">
+                    <span class="font-semibold text-gray-800">Admin Panel</span> 
+                </div>
+                <div class="flex items-center gap-6">
+                    <span class="text-sm font-medium text-gray-600">Admin</span>
+                    <a href="/" class="text-sm text-blue-600 hover:underline">Home</a>
+                </div>
+            </header>
+
+            <main class="flex-1 overflow-y-auto p-8 bg-gray-50/50">
+                <slot />
+            </main>
+        </div>
+
+	</body>
+</html>

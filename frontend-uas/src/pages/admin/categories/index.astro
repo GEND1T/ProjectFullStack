@@ -1,0 +1,60 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+let categories = [];
+
+try {
+    const response = await fetch(`${API_URL}/products/categories`);
+    const data = await response.json();
+    categories = Array.isArray(data) ? data : (data.data || []);
+} catch (e) { console.error(e); }
+---
+
+<DashboardLayout title="Kelola Kategori" currentPath="categories">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Daftar Kategori</h1>
+        <a href="/admin/categories/create" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700">
+            + Tambah Kategori
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-gray-700 border-b border-gray-100">
+                <tr>
+                    <th class="p-4 w-24">ID</th>
+                    <th class="p-4">Nama Kategori</th>
+                    <th class="p-4 text-center w-48">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {categories.map((cat: any) => (
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-4 font-mono font-bold text-emerald-600">{cat.id}</td>
+                        <td class="p-4 font-medium text-gray-800">{cat.name}</td>
+                        <td class="p-4 text-center">
+                            <div class="flex justify-center gap-2">
+                                <a href={`/admin/categories/edit/${cat.id}`} class="bg-amber-400 text-white px-3 py-1.5 rounded text-xs">Edit</a>
+                                <button class="bg-red-500 text-white px-3 py-1.5 rounded text-xs" onclick={`deleteCategory("${cat.id}")`}>Hapus</button>
+                            </div>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
+</DashboardLayout>
+
+<script define:vars={{ API_URL }}>
+    window.deleteCategory = async (id) => {
+        if(!confirm("Hapus kategori ini?")) return;
+        try {
+            const res = await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE' });
+            if(res.ok) window.location.reload();
+            else {
+                const data = await res.json();
+                alert(data.message || "Gagal menghapus");
+            }
+        } catch (e) { alert("Error koneksi"); }
+    }
+</script>

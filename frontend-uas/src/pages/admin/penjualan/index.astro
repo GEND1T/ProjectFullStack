@@ -1,0 +1,107 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+
+// PERBAIKAN 1: Sesuaikan Interface dengan JSON dari Backend
+interface Transaction {
+    id: number;
+    invoice: string;      // Tambahkan ini (dari backend: INVOICE_NO)
+    customer_name: string;
+    // customer_id tidak dikirim di getAllTransactions backend kita sebelumnya, 
+    // jadi opsional atau dihapus saja
+    date: string;
+    total: number;        // Ubah dari 'total_amount' menjadi 'total'
+}
+
+const API_URL = import.meta.env.PUBLIC_API_URL;
+let transactions: Transaction[] = []; 
+let errorMsg = null;
+
+try {
+    const response = await fetch(`${API_URL}/transaksi/history`); 
+    
+    if (!response.ok) {
+        throw new Error(`Error Backend: ${response.status} ${response.statusText}`);
+    }
+
+    const rawData = await response.json();
+    
+    // Logic ini sudah bagus (Safe Check)
+    if (Array.isArray(rawData)) {
+        transactions = rawData;
+    } else if (rawData.data && Array.isArray(rawData.data)) {
+        transactions = rawData.data;
+    } else {
+        console.error("Format data aneh:", rawData);
+    }
+
+} catch (e) {
+    console.error(e);
+    errorMsg = "Gagal memuat data. Pastikan backend berjalan.";
+}
+---
+
+<DashboardLayout title="Riwayat Penjualan" currentPath="penjualan">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Riwayat Transaksi</h1>
+        <a href="/admin/transaksi/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm">
+            + Transaksi Baru
+        </a>
+    </div>
+
+    {errorMsg && (
+        <div class="p-4 bg-red-100 text-red-700 rounded-lg mb-4 border border-red-200">
+            {errorMsg}
+        </div>
+    )}
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-gray-700 font-medium border-b border-gray-100">
+                <tr>
+                    <th class="p-5">No. Invoice</th>
+                    <th class="p-5">Pelanggan</th>
+                    <th class="p-5">Tanggal</th>
+                    <th class="p-5">Total</th>
+                    <th class="p-5 text-right">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {transactions.length > 0 ? transactions.map((trx) => (
+                    <tr class="hover:bg-blue-50/30 transition">
+                        <td class="p-5 font-mono text-blue-600 font-medium text-xs">
+                            {trx.invoice || '#' + trx.id}
+                        </td>
+                        
+                        <td class="p-5 font-medium">
+                            {trx.customer_name || 'Pelanggan Umum (Guest)'}
+                        </td>
+                        
+                        <td class="p-5">
+                            {trx.date ? new Date(trx.date).toLocaleDateString('id-ID', {
+                                day: 'numeric', month: 'short', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                            }) : '-'}
+                        </td>
+                        
+                        <td class="p-5 font-bold text-gray-700">
+                            Rp {parseInt(String(trx.total)).toLocaleString('id-ID')}
+                        </td>
+                        
+                        <td class="p-5 text-right">
+                            <a href={`/admin/penjualan/${trx.id}`} class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                                Detail
+                            </a>
+                        </td>
+                    </tr>
+                )) : (
+                    <tr>
+                        <td colspan="5" class="p-12 text-center text-gray-400 flex-col justify-center">
+                            <span class="text-4xl mb-2 block">📄</span>
+                            {errorMsg ? "Data error" : "Belum ada riwayat transaksi"}
+                        </td>
+                    </tr>
+                )}
+            </tbody>
+        </table>
+    </div>
+</DashboardLayout>

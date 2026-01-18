@@ -1,0 +1,65 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+let customers = [];
+
+try {
+    const res = await fetch(`${API_URL}/customers`);
+    if (res.ok) customers = await res.json();
+} catch (e) { console.error(e); }
+---
+
+<DashboardLayout title="Data Pelanggan" currentPath="customers">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Daftar Pelanggan</h1>
+        <a href="/admin/customers/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            + Tambah Pelanggan
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-gray-700 font-medium border-b border-gray-100">
+                <tr>
+                    <th class="p-4">ID</th>
+                    <th class="p-4">Nama Pelanggan</th>
+                    <th class="p-4">Kontak</th>
+                    <th class="p-4">Alamat</th>
+                    <th class="p-4 text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {customers.length > 0 ? customers.map((c: any) => (
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-4 font-mono text-xs font-bold text-blue-600">{c.id}</td>
+                        <td class="p-4 font-medium text-gray-800">
+                            {c.name}<br/>
+                            <span class="text-xs text-gray-400">{c.email}</span>
+                        </td>
+                        <td class="p-4">{c.phone}</td>
+                        <td class="p-4 truncate max-w-xs">{c.address}</td>
+                        <td class="p-4 text-center">
+                            <div class="flex justify-center gap-2">
+                                <a href={`/admin/customers/edit/${c.id}`} class="bg-amber-400 text-white px-3 py-1.5 rounded text-xs">Edit</a>
+                                <button class="bg-red-500 text-white px-3 py-1.5 rounded text-xs" onclick={`deleteCust('${c.id}')`}>Hapus</button>
+                            </div>
+                        </td>
+                    </tr>
+                )) : (
+                    <tr><td colspan="5" class="p-6 text-center text-gray-400">Belum ada pelanggan</td></tr>
+                )}
+            </tbody>
+        </table>
+    </div>
+</DashboardLayout>
+
+<script define:vars={{ API_URL }}>
+    window.deleteCust = async (id) => {
+        if(!confirm("Hapus pelanggan ini?")) return;
+        try {
+            const res = await fetch(`${API_URL}/customers/${id}`, { method: 'DELETE' });
+            if(res.ok) window.location.reload();
+            else alert("Gagal hapus (Mungkin ada riwayat transaksi)");
+        } catch(e) { alert("Error koneksi"); }
+    }
+</script>

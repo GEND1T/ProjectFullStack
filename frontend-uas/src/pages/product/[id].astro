@@ -1,0 +1,134 @@
+---
+import Layout from "../../layouts/Layout.astro";
+
+// Ambil ID dari URL
+const { id } = Astro.params;
+const API_URL = "http://localhost:3000/api";
+const SERVER_URL = "http://localhost:3000";
+
+let product = null;
+
+try {
+  const res = await fetch(`${API_URL}/products/${id}`);
+  if (res.ok) {
+    product = await res.json();
+  }
+} catch (e) {
+  console.error("Error fetch detail:", e);
+}
+
+// Jika produk tidak ditemukan (404)
+if (!product) {
+    return Astro.redirect('/'); 
+}
+
+const imageUrl = product.image ? `${SERVER_URL}${product.image}` : "https://placehold.co/600x600?text=No+Image";
+---
+
+<Layout title={product.name}>
+  <div class="max-w-6xl mx-auto px-4 py-10">
+    
+    <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2">
+        <a href="/" class="hover:text-blue-600">Home</a> 
+        <span>/</span>
+        <span class="text-gray-800 font-medium truncate">{product.name}</span>
+    </nav>
+
+    <div class="grid md:grid-cols-2 gap-10 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+      
+      <div class="aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
+        <img src={imageUrl} class="w-full h-full object-contain" alt={product.name} />
+      </div>
+
+      <div class="flex flex-col">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+        
+        <div class="flex items-center gap-3 mb-6">
+            <span class="bg-blue-100 text-blue-700 text-xs px-2.5 py-1 rounded-full font-bold">
+                Stok: {product.stock}
+            </span>
+            <span class="text-gray-400">|</span>
+            <span class="text-sm text-gray-500">Kategori ID: {product.category_id}</span>
+        </div>
+
+        <p class="text-4xl font-bold text-blue-600 mb-8">
+          Rp {parseInt(product.price).toLocaleString('id-ID')}
+        </p>
+
+        <div class="mt-auto">
+            <label class="text-sm font-medium text-gray-700 mb-2 block">Jumlah Pembelian</label>
+            <div class="flex gap-4 items-center">
+                <div class="flex items-center border border-gray-300 rounded-lg bg-gray-50">
+                    <button id="btn-dec" class="px-4 py-2 hover:bg-gray-200 text-gray-600 font-bold rounded-l-lg">-</button>
+                    <input type="text" id="qty" value="1" class="w-12 text-center bg-transparent border-none focus:ring-0 py-2 font-medium" readonly>
+                    <button id="btn-inc" class="px-4 py-2 hover:bg-gray-200 text-gray-600 font-bold rounded-r-lg">+</button>
+                </div>
+                
+                <button id="add-to-cart" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/30 flex justify-center items-center gap-2">
+                    <span class="material-icons-outlined">add_shopping_cart</span>
+                    Masukkan Keranjang
+                </button>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script define:vars={{ product, imageUrl }}>
+  // LOGIC CLIENT SIDE (Browser)
+  const btnDec = document.getElementById('btn-dec');
+  const btnInc = document.getElementById('btn-inc');
+  const qtyInput = document.getElementById('qty');
+  const addBtn = document.getElementById('add-to-cart');
+
+  let qty = 1;
+  const maxStock = parseInt(product.stock);
+
+  // Counter
+  btnDec.addEventListener('click', () => {
+    if (qty > 1) { qty--; qtyInput.value = qty; }
+  });
+
+  btnInc.addEventListener('click', () => {
+    if (qty < maxStock) { qty++; qtyInput.value = qty; }
+    else { alert('Stok maksimal tercapai!'); }
+  });
+
+  // Add to Cart (LocalStorage)
+  addBtn.addEventListener('click', () => {
+    // 1. Ambil cart yang ada di memory browser
+    let cart = JSON.parse(localStorage.getItem('genexCart')) || [];
+
+    // 2. Cek apakah produk ini sudah ada?
+    const existingIndex = cart.findIndex(item => item.id == product.id);
+
+    if (existingIndex > -1) {
+      // Kalau sudah ada, tambah jumlahnya
+      const newQty = cart[existingIndex].qty + qty;
+      if(newQty > maxStock) {
+        cart[existingIndex].qty = maxStock;
+        alert(`Total qty mentok di stok maksimal (${maxStock})`);
+      } else {
+        cart[existingIndex].qty = newQty;
+      }
+    } else {
+      // Kalau belum ada, masukkan sebagai item baru
+      cart.push({
+        id: product.id,
+        name: product.name,
+        price: parseInt(product.price),
+        image: imageUrl,
+        qty: qty,
+        maxStock: maxStock
+      });
+    }
+
+    // 3. Simpan kembali
+    localStorage.setItem('genexCart', JSON.stringify(cart));
+    alert('✅ Produk berhasil dimasukkan keranjang!');
+    
+    // 4. Redirect ke cart (opsional)
+    // window.location.href = '/cart';
+  });
+</script>

@@ -1,0 +1,96 @@
+---
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+
+let stats = {
+    revenue: 0,
+    total_trx: 0,
+    total_products: 0,
+    total_customers: 0
+};
+let errorMsg = null;
+
+try {
+    // Panggil API stats yang baru kita buat
+    // Pastikan path router backend sesuai: /transaksi/stats/dashboard
+    // Jika di backend Anda pakai prefix /api/transaksi, maka URL di bawah sudah benar
+    const res = await fetch(`${API_URL}/transaksi/stats/dashboard`);
+    if (res.ok) {
+        stats = await res.json();
+    } else {
+        errorMsg = "Gagal memuat statistik.";
+    }
+} catch (e) {
+    errorMsg = "Error koneksi server.";
+}
+---
+
+<DashboardLayout title="Dashboard Overview" currentPath="dashboard">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <p class="text-gray-500 text-sm">Ringkasan aktivitas toko Anda hari ini.</p>
+    </div>
+
+    {errorMsg && <div class="p-3 mb-4 bg-red-100 text-red-700 rounded text-sm">{errorMsg}</div>}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Pendapatan</p>
+                <h3 class="text-2xl font-bold text-emerald-600">
+                    Rp {parseInt(String(stats.revenue)).toLocaleString('id-ID')}
+                </h3>
+            </div>
+            <div class="p-3 bg-emerald-50 rounded-full text-emerald-600">
+                💰
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Transaksi</p>
+                <h3 class="text-2xl font-bold text-blue-600">
+                    {stats.total_trx}
+                </h3>
+            </div>
+            <div class="p-3 bg-blue-50 rounded-full text-blue-600">
+                🧾
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Produk</p>
+                <h3 class="text-2xl font-bold text-gray-800">
+                    {stats.total_products}
+                </h3>
+            </div>
+            <div class="p-3 bg-orange-50 rounded-full text-orange-600">
+                📦
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Pelanggan</p>
+                <h3 class="text-2xl font-bold text-purple-600">
+                    {stats.total_customers}
+                </h3>
+            </div>
+            <div class="p-3 bg-purple-50 rounded-full text-purple-600">
+                👥
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="font-bold text-gray-800 mb-4">Aktivitas Terbaru</h3>
+        <p class="text-gray-500 text-sm italic">
+            Fitur grafik penjualan bisa dikembangkan selanjutnya menggunakan library Chart.js
+        </p>
+    </div>
+
+    
+
+</DashboardLayout>

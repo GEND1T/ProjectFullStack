@@ -1,0 +1,86 @@
+---
+import Layout from "../layouts/Layout.astro";
+import CategoryCard from "../components/CategoryCard.astro";
+import ProductCard from "../components/ProductCard.astro";
+
+// Config API
+const API_URL = "http://localhost:3000/api";
+
+let categories = [];
+let products = [];
+let errorMsg = null;
+
+try {
+  // Fetch Paralel (Lebih cepat)
+  const [catRes, prodRes] = await Promise.all([
+    fetch(`${API_URL}/products/categories`),
+    fetch(`${API_URL}/products`)
+  ]);
+
+  // Parsing JSON
+  categories = await catRes.json();
+  const prodData = await prodRes.json();
+  products = prodData.data || []; // Handle jika backend bungkus di object {data: []}
+
+} catch (error) {
+  console.error("Gagal connect ke backend:", error);
+  errorMsg = "Gagal memuat data. Pastikan server backend menyala.";
+}
+---
+
+<Layout title="Genexmart - Toko Online Terlengkap">
+  <div class="max-w-7xl mx-auto px-4 pt-8 pb-12">
+
+    <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 md:p-12 text-white mb-12 shadow-lg flex flex-col md:flex-row items-center justify-between">
+      <div class="mb-6 md:mb-0">
+        <h1 class="text-4xl font-bold mb-4">Belanja Hemat & Lengkap</h1>
+        <p class="text-blue-100 text-lg mb-6">Temukan berbagai produk kebutuhan harian dengan harga terbaik.</p>
+        <a href="#produk" class="bg-white text-blue-700 px-6 py-3 rounded-full font-bold hover:bg-gray-100 transition shadow-md">
+            Mulai Belanja
+        </a>
+      </div>
+      <div class="text-9xl animate-bounce">🛍️</div>
+    </div>
+
+    {errorMsg && (
+        <div class="bg-red-100 text-red-700 p-4 rounded-lg text-center mb-8 border border-red-200">
+            {errorMsg}
+        </div>
+    )}
+
+    <section class="mb-12">
+      <div class="flex justify-between items-end mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-blue-600 pl-3">Kategori</h2>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {categories.map((cat: any) => (
+          // Icon bisa dinamis jika database punya kolom icon, atau default
+          <CategoryCard name={cat.name} icon="category" />
+        ))}
+      </div>
+    </section>
+
+    <section id="produk">
+      <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-blue-600 pl-3 mb-6">Produk Terbaru</h2>
+
+      {products.length > 0 ? (
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {products.map((p: any) => (
+            <ProductCard 
+              id={p.id}
+              name={p.name} 
+              price={p.price} 
+              image={p.image}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="text-center py-20 text-gray-500 bg-white rounded-xl border border-dashed">
+          <p>Belum ada produk yang tersedia.</p>
+        </div>
+      )}
+    </section>
+
+  </div>
+</Layout>

@@ -1,0 +1,77 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+---
+
+<DashboardLayout title="Tambah Pelanggan" currentPath="customers">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Registrasi Pelanggan</h1>
+        
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <form id="addCustForm" class="space-y-4">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">ID Pelanggan (Max 8)</label>
+                        <input type="text" name="id" maxlength="8" required class="w-full px-4 py-2 border rounded-lg uppercase" placeholder="CUST001" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nama Lengkap</label>
+                        <input type="text" name="name" required class="w-full px-4 py-2 border rounded-lg" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Email</label>
+                        <input type="email" name="email" required class="w-full px-4 py-2 border rounded-lg" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">No. HP</label>
+                        <input type="text" name="phone" required class="w-full px-4 py-2 border rounded-lg" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1">Jenis Kelamin</label>
+                    <select name="gender" required class="w-full px-4 py-2 border rounded-lg bg-white">
+                        <option value="">-- Pilih --</option>
+                        <option value="L">Laki-laki</option>
+                        <option value="P">Perempuan</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1">Alamat</label>
+                    <textarea name="address" required class="w-full px-4 py-2 border rounded-lg" rows="3"></textarea>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3">
+                    <a href="/admin/customers" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Batal</a>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</DashboardLayout>
+
+<script define:vars={{ API_URL }}>
+    document.getElementById('addCustForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target));
+        try {
+            const res = await fetch(`${API_URL}/customers`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                alert("Berhasil disimpan!");
+                window.location.href = '/admin/customers';
+            } else {
+                const json = await res.json();
+                alert(json.message || "Gagal menyimpan");
+            }
+        } catch(err) { alert("Gagal koneksi server"); }
+    });
+</script>

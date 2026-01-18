@@ -1,0 +1,32 @@
+---
+const { id, name, price, image } = Astro.props;
+const SERVER_URL = "http://localhost:3000"; // URL Backend
+
+// Cek apakah gambar dari DB atau placeholder
+const imageUrl = image ? `${SERVER_URL}${image}` : "https://placehold.co/300?text=No+Image";
+---
+
+<a href={`/product/${id}`} class="group flex flex-col bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-xl transition h-full">
+  <div class="aspect-square bg-gray-100 relative overflow-hidden">
+    <img 
+      src={imageUrl} 
+      alt={name} 
+      class="w-full h-full object-cover group-hover:scale-110 duration-500" 
+      loading="lazy"
+    />
+  </div>
+
+  <div class="p-4 flex flex-col flex-grow">
+    <h3 class="font-medium text-gray-700 text-sm line-clamp-2 mb-2 group-hover:text-blue-600 transition">
+      {name}
+    </h3>
+
+    <div class="mt-auto flex justify-between items-center">
+      <p class="text-blue-600 font-bold text-lg">Rp {price.toLocaleString('id-ID')}</p>
+      
+      <div class="bg-blue-50 p-2 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
+        <span class="material-icons-outlined text-sm">shopping_cart</span>
+      </div>
+    </div>
+  </div>
+</a>

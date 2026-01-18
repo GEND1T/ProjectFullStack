@@ -1,0 +1,121 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+const SERVER_URL = "http://localhost:3000";
+
+let products = [];
+let error = null;
+
+try {
+    const response = await fetch(`${API_URL}/products`);
+    if (!response.ok) throw new Error("Gagal mengambil data");
+    const data = await response.json();
+    products = data.data || data; 
+} catch (e) {
+    error = "Gagal memuat produk. Pastikan backend berjalan.";
+}
+---
+
+<DashboardLayout title="Produk" currentPath="products">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Daftar Produk</h1>
+            <p class="text-sm text-gray-500">Kelola katalog barang toko anda</p>
+        </div>
+        <a href="/admin/products/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow-sm flex items-center gap-2">
+            <span>+</span> Tambah Produk
+        </a>
+    </div>
+
+    {error && <div class="p-4 bg-red-100 text-red-700 rounded-lg mb-4 border border-red-200">{error}</div>}
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-600">
+                <thead class="bg-gray-50 text-gray-700 font-bold border-b border-gray-100 uppercase text-xs tracking-wider">
+                    <tr>
+                        <th class="p-4 w-[350px]">Produk</th>
+                        <th class="p-4">Kategori</th>
+                        <th class="p-4 text-right">Harga</th>
+                        <th class="p-4 text-center">Stok</th>
+                        <th class="p-4 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {products.length > 0 ? products.map((p: any) => (
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            
+                            <td class="p-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 relative">
+                                        {p.image ? (
+                                            <img src={`${SERVER_URL}${p.image}`} alt={p.name} class="w-full h-full object-cover" />
+                                        ) : (
+                                            <div class="w-full h-full flex items-center justify-center text-gray-400 text-[10px] text-center p-1 bg-gray-50">No Img</div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-gray-800 line-clamp-2">{p.name}</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">ID: {p.id}</p>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="p-4">
+                                <span class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-100">
+                                    {p.category_name || 'Uncategorized'}
+                                </span>
+                            </td>
+
+                            <td class="p-4 text-right font-mono font-medium text-gray-700">
+                                Rp {parseInt(p.price).toLocaleString('id-ID')}
+                            </td>
+
+                            <td class="p-4 text-center">
+                                <span class={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                    p.stock > 10 ? 'bg-emerald-100 text-emerald-700' : 
+                                    p.stock > 0 ? 'bg-amber-100 text-amber-700' : 
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                    {p.stock}
+                                </span>
+                            </td>
+    
+
+                            <td class="p-4 text-center">
+                                <div class="flex justify-center gap-2">
+                                <a href={`/admin/products/edit/${p.id}`} class="bg-amber-400 text-white px-3 py-1.5 rounded text-xs">Edit</a>
+                                <button onclick={`deleteProduct('${p.id}')`} class="bg-red-500 text-white px-3 py-1.5 rounded text-xs">Hapus</button>
+                            </div>
+                            </td>
+                        </tr>
+                    )) : (
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-gray-400 bg-gray-50/50">
+                                <p>Belum ada data produk.</p>
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</DashboardLayout>
+
+<script define:vars={{ API_URL }}>
+    window.deleteProduct = async function(id, name) {
+        if (!confirm(`Apakah Anda yakin ingin menghapus produk "${name}"?\nData yang dihapus tidak dapat dikembalikan.`)) return;
+        
+        try {
+            const response = await fetch(`${API_URL}/products/${id}`, { method: 'DELETE' });
+            if (response.ok) { 
+                window.location.reload(); 
+            } else { 
+                const res = await response.json(); 
+                alert("Gagal: " + res.message); 
+            }
+        } catch (e) { 
+            alert("Gagal terhubung ke server"); 
+        }
+    }
+</script>

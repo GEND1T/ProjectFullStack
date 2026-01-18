@@ -1,0 +1,60 @@
+---
+// Navbar.astro
+---
+
+<nav class="bg-blue-600 shadow-lg sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center h-16">
+      <a href="/" class="text-white font-bold text-2xl tracking-tight flex items-center gap-2">
+        <span class="material-icons-outlined">storefront</span> Rumah.in
+      </a>
+
+      <div class="hidden md:flex space-x-6 items-center">
+        <a class="text-white/90 hover:text-white font-medium" href="/">Beranda</a>
+        <a class="text-white/90 hover:text-white font-medium" href="/cart">Keranjang</a>
+        
+        <div id="nav-auth" class="flex items-center gap-3 ml-4">
+            <a href="/login" class="bg-white text-blue-600 px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-100 transition shadow">
+                Masuk / Daftar
+            </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<script is:inline>
+    // SCRIPT PENGECEKAN LOGIN
+    const navAuth = document.getElementById('nav-auth');
+    
+    // Ambil data user dari LocalStorage
+    const userStr = localStorage.getItem('genexUser');
+    
+    if (userStr) {
+        const user = JSON.parse(userStr);
+        
+        // Tampilkan Nama User & Tombol Logout
+        navAuth.innerHTML = `
+            <div class="flex items-center gap-2 text-white mr-2">
+                <span class="material-icons-outlined text-lg">account_circle</span>
+                <span class="font-medium text-sm">Hai, ${user.name.split(' ')[0]}</span>
+            </div>
+            ${user.role === 'admin' ? 
+                `<a href="/admin/dashboard" class="bg-yellow-400 text-yellow-900 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-yellow-300">Admin Panel</a>` 
+                : ''
+            }
+            <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition" title="Keluar">
+                <span class="material-icons-outlined text-sm">logout</span>
+            </button>
+        `;
+    }
+
+    // Fungsi Global Logout
+    window.logout = () => {
+        if(confirm("Yakin ingin keluar?")) {
+            localStorage.removeItem('genexToken');
+            localStorage.removeItem('genexUser');
+            window.location.href = '/login';
+        }
+    }
+</script>

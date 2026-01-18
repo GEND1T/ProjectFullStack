@@ -1,0 +1,118 @@
+---
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+
+// Fetch Kategori untuk Dropdown
+let categories = [];
+try {
+    const res = await fetch(`${API_URL}/products/categories`);
+    categories = await res.json();
+} catch (e) { console.error(e); }
+---
+
+<DashboardLayout title="Tambah Produk" currentPath="products">
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Tambah Produk Baru</h1>
+
+        <form id="addProductForm" class="space-y-5">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Foto Produk</label>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition relative">
+                    <input type="file" name="image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="previewImage(event)">
+                    <div id="preview-container" class="hidden">
+                        <img id="preview-img" src="" class="h-32 mx-auto rounded-lg object-cover shadow-sm mb-2">
+                        <p class="text-xs text-blue-600">Klik untuk ganti gambar</p>
+                    </div>
+                    <div id="upload-placeholder">
+                        <span class="text-4xl">📷</span>
+                        <p class="text-sm text-gray-500 mt-2">Klik atau drag foto di sini</p>
+                        <p class="text-xs text-gray-400 mt-1">JPG, PNG (Max 2MB)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">Nama Produk</label>
+                <input type="text" name="name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Contoh: Kuali Teflon 24cm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Kategori</label>
+                    <select name="category_id" required class="w-full px-4 py-2 border rounded-lg bg-white">
+                        <option value="">-- Pilih --</option>
+                        {categories.map((cat: any) => (  <option value={cat.id}>{cat.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Stok Awal</label>
+                    <input type="number" name="stock" required min="0" class="w-full px-4 py-2 border rounded-lg">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">Harga Jual (Rp)</label>
+                <input type="number" name="price" required min="0" class="w-full px-4 py-2 border rounded-lg text-lg font-bold text-gray-700" placeholder="0">
+            </div>
+
+            <div class="pt-4 flex justify-end gap-3">
+                <a href="/admin/products" class="px-5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 font-medium">Batal</a>
+                <button type="submit" class="px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition transform hover:-translate-y-0.5">
+                    Simpan Produk
+                </button>
+            </div>
+        </form>
+    </div>
+</DashboardLayout>
+
+<script define:vars={{ API_URL }}>
+    // Script Preview Gambar
+    window.previewImage = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            document.getElementById('upload-placeholder').classList.add('hidden');
+            document.getElementById('preview-container').classList.remove('hidden');
+            document.getElementById('preview-img').src = URL.createObjectURL(file);
+        }
+    }
+
+    // Script Submit Form
+    document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.innerText = "Menyimpan...";
+        btn.disabled = true;
+
+        // PENTING: Gunakan FormData untuk Upload File
+        const formData = new FormData(e.target);
+
+        try {
+            const res = await fetch(`${API_URL}/products`, {
+                method: 'POST',
+                // Header Content-Type JANGAN di-set manual saat pakai FormData!
+                // Browser akan otomatis mengaturnya.
+                body: formData 
+            });
+
+            const result = await res.json();
+
+            if (res.ok) {
+                alert("✅ Produk berhasil disimpan!");
+                window.location.href = '/admin/products';
+            } else {
+                alert("❌ Gagal: " + (result.message || "Terjadi kesalahan"));
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        } catch (err) {
+            console.error(err);
+            alert("⚠️ Gagal koneksi ke server backend.");
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    });
+</script>

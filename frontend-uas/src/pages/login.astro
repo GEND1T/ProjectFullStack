@@ -1,0 +1,149 @@
+---
+import Layout from "../layouts/Layout.astro";
+const API_URL = "http://localhost:3000/api";
+---
+
+<Layout title="Login Masuk">
+    <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+            
+            <div class="text-center">
+                <h2 class="text-3xl font-extrabold text-gray-900">Selamat Datang</h2>
+                <p class="mt-2 text-sm text-gray-600">Silakan masuk ke akun Anda</p>
+            </div>
+
+            <div class="bg-gray-100 p-1 rounded-xl flex">
+                <button id="tab-cust" class="flex-1 py-2 text-sm font-bold rounded-lg shadow-sm bg-white text-blue-600 transition-all duration-200">
+                    Pelanggan
+                </button>
+                <button id="tab-admin" class="flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all duration-200">
+                    Kasir / Admin
+                </button>
+            </div>
+
+            <form id="loginForm" class="mt-8 space-y-6">
+                <input type="hidden" name="role" id="roleInput" value="customer">
+
+                <div class="space-y-4">
+                    <div>
+                        <label id="label-identifier" class="block text-sm font-medium text-gray-700 mb-1">Alamat Email</label>
+                        <input id="identifier" name="identifier" type="text" required 
+                               class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition" 
+                               placeholder="nama@email.com">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input id="password" name="password" type="password" required 
+                               class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition" 
+                               placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" id="btnLogin" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg shadow-blue-500/30 transition transform active:scale-95">
+                        Masuk Sekarang
+                    </button>
+                </div>
+
+                <div class="text-center mt-4">
+                    <p class="text-sm text-gray-600">
+                        Belum punya akun? <a href="/register" class="font-bold text-blue-600 hover:text-blue-500">Daftar disini</a>
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+</Layout>
+
+<script define:vars={{ API_URL }}>
+    // --- 1. LOGIC TAB SWITCHER ---
+    const tabCust = document.getElementById('tab-cust');
+    const tabAdmin = document.getElementById('tab-admin');
+    const roleInput = document.getElementById('roleInput');
+    const identifierInput = document.getElementById('identifier');
+    const labelIdentifier = document.getElementById('label-identifier');
+
+    // Style Class Helper
+    const activeClass = "bg-white text-blue-600 shadow-sm font-bold";
+    const inactiveClass = "text-gray-500 hover:text-gray-700 font-medium bg-transparent shadow-none";
+
+    tabCust.addEventListener('click', () => setTab('customer'));
+    tabAdmin.addEventListener('click', () => setTab('admin'));
+
+    function setTab(role) {
+        roleInput.value = role;
+        
+        if(role === 'customer') {
+            // Update Tab Style
+            tabCust.className = `flex-1 py-2 text-sm rounded-lg transition-all duration-200 ${activeClass}`;
+            tabAdmin.className = `flex-1 py-2 text-sm rounded-lg transition-all duration-200 ${inactiveClass}`;
+            
+            // Update Input Placeholder
+            labelIdentifier.innerText = "Alamat Email";
+            identifierInput.placeholder = "nama@email.com";
+        } else {
+            // Update Tab Style
+            tabAdmin.className = `flex-1 py-2 text-sm rounded-lg transition-all duration-200 ${activeClass}`;
+            tabCust.className = `flex-1 py-2 text-sm rounded-lg transition-all duration-200 ${inactiveClass}`;
+            
+            // Update Input Placeholder
+            labelIdentifier.innerText = "ID Kasir / Username";
+            identifierInput.placeholder = "Contoh: ADM001";
+        }
+    }
+
+
+    // --- 2. LOGIC LOGIN ---
+    const form = document.getElementById('loginForm');
+    const btn = document.getElementById('btnLogin');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // UI Loading
+        const originalText = btn.innerText;
+        btn.innerText = "Memverifikasi...";
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData);
+
+        try {
+            const res = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            const result = await res.json();
+
+            if (res.ok) {
+                // SIMPAN TOKEN KE BROWSER
+                localStorage.setItem('genexToken', result.token);
+                localStorage.setItem('genexUser', JSON.stringify(result.user));
+
+                // Redirect
+                if(result.user.role === 'admin') {
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    window.location.href = '/'; // Home Customer
+                }
+            } else {
+                alert("❌ Login Gagal: " + (result.message || "Periksa data anda"));
+                resetBtn();
+            }
+        } catch (err) {
+            console.error(err);
+            alert("⚠️ Gagal koneksi ke server");
+            resetBtn();
+        }
+
+        function resetBtn() {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+    });
+</script>
