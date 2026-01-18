@@ -1,15 +1,15 @@
 ---
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 
-// PERBAIKAN 1: Sesuaikan Interface dengan JSON dari Backend
+// DEFINISI TIPE DATA (Sesuai JSON Backend)
 interface Transaction {
     id: number;
-    invoice: string;      // Tambahkan ini (dari backend: INVOICE_NO)
+    invoice: string;      
     customer_name: string;
-    // customer_id tidak dikirim di getAllTransactions backend kita sebelumnya, 
-    // jadi opsional atau dihapus saja
-    date: string;
-    total: number;        // Ubah dari 'total_amount' menjadi 'total'
+    date: string;         // Format: YYYY-MM-DDTHH:mm:ss
+    total: number;
+    status: string;
+    method: string;
 }
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
@@ -17,6 +17,7 @@ let transactions: Transaction[] = [];
 let errorMsg = null;
 
 try {
+    // Fetch Data History
     const response = await fetch(`${API_URL}/transaksi/history`); 
     
     if (!response.ok) {
@@ -25,13 +26,13 @@ try {
 
     const rawData = await response.json();
     
-    // Logic ini sudah bagus (Safe Check)
+    // Validasi Array
     if (Array.isArray(rawData)) {
         transactions = rawData;
     } else if (rawData.data && Array.isArray(rawData.data)) {
         transactions = rawData.data;
     } else {
-        console.error("Format data aneh:", rawData);
+        console.error("Format data tidak dikenali:", rawData);
     }
 
 } catch (e) {
@@ -41,53 +42,80 @@ try {
 ---
 
 <DashboardLayout title="Riwayat Penjualan" currentPath="penjualan">
+    
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">Riwayat Transaksi</h1>
-        <a href="/admin/transaksi/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm">
-            + Transaksi Baru
+        <a href="/admin/transaksi/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm flex items-center gap-2">
+            <span class="material-icons-outlined text-sm">+</span> Transaksi Baru
         </a>
     </div>
 
     {errorMsg && (
-        <div class="p-4 bg-red-100 text-red-700 rounded-lg mb-4 border border-red-200">
+        <div class="p-4 bg-red-100 text-red-700 rounded-lg mb-4 border border-red-200 flex items-center gap-2">
+            <span class="material-icons-outlined">error</span>
             {errorMsg}
         </div>
     )}
 
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="md:col-span-2 relative">
+            <span class="material-icons-outlined absolute left-3 top-2.5 text-gray-400"></span>
+            <input type="text" id="searchTrx" placeholder="Cari No Invoice atau Nama Pelanggan..." 
+                   class="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition">
+        </div>
+
+        <div>
+            <input type="date" id="dateStart" class="w-full px-4 py-2 border rounded-lg text-gray-600 outline-none focus:ring-2 focus:ring-blue-500 transition">
+        </div>
+
+        <div>
+            <input type="date" id="dateEnd" class="w-full px-4 py-2 border rounded-lg text-gray-600 outline-none focus:ring-2 focus:ring-blue-500 transition">
+        </div>
+    </div>
+
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table class="w-full text-left text-sm text-gray-600">
-            <thead class="bg-gray-50 text-gray-700 font-medium border-b border-gray-100">
+            <thead class="bg-gray-50 text-gray-700 font-bold border-b border-gray-100 uppercase text-xs tracking-wider">
                 <tr>
-                    <th class="p-5">No. Invoice</th>
-                    <th class="p-5">Pelanggan</th>
-                    <th class="p-5">Tanggal</th>
-                    <th class="p-5">Total</th>
-                    <th class="p-5 text-right">Aksi</th>
+                    <th class="p-4">No. Invoice</th>
+                    <th class="p-4">Pelanggan</th>
+                    <th class="p-4">Tanggal</th>
+                    <th class="p-4 text-right">Total</th>
+                    <th class="p-4 text-center">Status</th>
+                    <th class="p-4 text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
                 {transactions.length > 0 ? transactions.map((trx) => (
-                    <tr class="hover:bg-blue-50/30 transition">
-                        <td class="p-5 font-mono text-blue-600 font-medium text-xs">
+                    // --- PERBAIKAN UTAMA DISINI: data-date ---
+                    <tr class="hover:bg-blue-50/50 transition duration-150" data-date={trx.date}>
+                        
+                        <td class="p-4 font-mono text-blue-600 font-bold text-xs">
                             {trx.invoice || '#' + trx.id}
                         </td>
                         
-                        <td class="p-5 font-medium">
-                            {trx.customer_name || 'Pelanggan Umum (Guest)'}
+                        <td class="p-4 font-medium text-gray-800">
+                            {trx.customer_name || 'Guest'}
                         </td>
                         
-                        <td class="p-5">
+                        <td class="p-4 text-gray-500">
                             {trx.date ? new Date(trx.date).toLocaleDateString('id-ID', {
                                 day: 'numeric', month: 'short', year: 'numeric',
                                 hour: '2-digit', minute: '2-digit'
                             }) : '-'}
                         </td>
                         
-                        <td class="p-5 font-bold text-gray-700">
+                        <td class="p-4 text-right font-bold text-gray-800">
                             Rp {parseInt(String(trx.total)).toLocaleString('id-ID')}
                         </td>
+
+                        <td class="p-4 text-center">
+                            <span class={`px-2 py-1 rounded text-[10px] font-bold ${trx.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {trx.status}
+                            </span>
+                        </td>
                         
-                        <td class="p-5 text-right">
+                        <td class="p-4 text-center">
                             <a href={`/admin/penjualan/${trx.id}`} class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
                                 Detail
                             </a>
@@ -95,9 +123,9 @@ try {
                     </tr>
                 )) : (
                     <tr>
-                        <td colspan="5" class="p-12 text-center text-gray-400 flex-col justify-center">
-                            <span class="text-4xl mb-2 block">📄</span>
-                            {errorMsg ? "Data error" : "Belum ada riwayat transaksi"}
+                        <td colspan="6" class="p-12 text-center text-gray-400">
+                            <span class="material-icons-outlined text-4xl mb-2 block text-gray-300">receipt_long</span>
+                            {errorMsg ? "Gagal memuat data" : "Belum ada riwayat transaksi"}
                         </td>
                     </tr>
                 )}
@@ -105,3 +133,53 @@ try {
         </table>
     </div>
 </DashboardLayout>
+
+<script>
+    // LOGIKA FILTER CLIENT SIDE
+    const searchInput = document.getElementById('searchTrx') as HTMLInputElement;
+    const dateStartInput = document.getElementById('dateStart') as HTMLInputElement;
+    const dateEndInput = document.getElementById('dateEnd') as HTMLInputElement;
+    
+    function filterTransactions() {
+        const term = searchInput.value.toLowerCase();
+        
+        // Konversi string input date ke Object Date
+        // Jam di-set ke 00:00:00 untuk Start, dan 23:59:59 untuk End
+        let startDate: Date | null = dateStartInput.value ? new Date(dateStartInput.value) : null;
+        if(startDate) startDate.setHours(0,0,0,0);
+
+        let endDate: Date | null = dateEndInput.value ? new Date(dateEndInput.value) : null;
+        if(endDate) endDate.setHours(23,59,59,999);
+        
+        const rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach((row) => {
+            const htmlRow = row as HTMLElement;
+
+            // 1. Cek Text (Invoice & Nama)
+            // Kita ambil teks dari baris itu dan lowercase
+            const textContent = htmlRow.innerText.toLowerCase();
+            const matchesText = textContent.includes(term);
+
+            // 2. Cek Tanggal
+            // Ambil tanggal asli dari atribut data-date yang baru kita pasang
+            const rowDateStr = htmlRow.getAttribute('data-date');
+            let matchesDate = true;
+            
+            if (rowDateStr && (startDate || endDate)) {
+                const rowDate = new Date(rowDateStr);
+                
+                if (startDate && rowDate < startDate) matchesDate = false;
+                if (endDate && rowDate > endDate) matchesDate = false;
+            }
+
+            // Tampilkan jika cocok KEDUANYA (Text DAN Tanggal)
+            htmlRow.style.display = (matchesText && matchesDate) ? '' : 'none';
+        });
+    }
+
+    // Pasang Event Listener
+    if(searchInput) searchInput.addEventListener('input', filterTransactions);
+    if(dateStartInput) dateStartInput.addEventListener('change', filterTransactions);
+    if(dateEndInput) dateEndInput.addEventListener('change', filterTransactions);
+</script>

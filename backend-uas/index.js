@@ -31,6 +31,8 @@ app.use('/api/transaksi', transaksiRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/auth', authRoutes); // <--- Tambahkan ini
 
+
+
 app.listen(PORT, () => {
     console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
 });

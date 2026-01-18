@@ -1,20 +1,21 @@
 const db = require('../config/database');
 
-// 1. Ambil Semua Kategori
+// 1. AMBIL SEMUA KATEGORI
 exports.getAllCategories = async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT CATEGORY_ID as id, CATEGORY_NAME as name FROM product_categories ORDER BY CATEGORY_NAME ASC');
+        // Alias: CATEGORY_ID -> id, CATEGORY -> name
+        const [rows] = await db.query('SELECT CATEGORY_ID as id, CATEGORY as name FROM product_categories ORDER BY CATEGORY ASC');
         res.json(rows);
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error });
     }
 };
 
-// 2. Ambil 1 Kategori (Untuk Edit)
+// 2. AMBIL 1 KATEGORI
 exports.getCategoryById = async (req, res) => {
     const { id } = req.params;
     try {
-        const [rows] = await db.query('SELECT CATEGORY_ID as id, CATEGORY_NAME as name FROM product_categories WHERE CATEGORY_ID = ?', [id]);
+        const [rows] = await db.query('SELECT CATEGORY_ID as id, CATEGORY as name FROM product_categories WHERE CATEGORY_ID = ?', [id]);
         if (rows.length === 0) return res.status(404).json({ message: 'Kategori tidak ditemukan' });
         res.json(rows[0]);
     } catch (error) {
@@ -22,26 +23,24 @@ exports.getCategoryById = async (req, res) => {
     }
 };
 
-// 3. Tambah Kategori (Opsional, buat jaga-jaga)
+// 3. TAMBAH KATEGORI (Opsional)
 exports.createCategory = async (req, res) => {
-    const { id, name } = req.body; // ID harus manual misal 'SN' (Snack)
+    const { id, name } = req.body;
     try {
-        await db.query('INSERT INTO product_categories (CATEGORY_ID, CATEGORY_NAME) VALUES (?, ?)', [id, name]);
+        await db.query('INSERT INTO product_categories (CATEGORY_ID, CATEGORY) VALUES (?, ?)', [id, name]);
         res.status(201).json({ message: 'Kategori berhasil dibuat' });
     } catch (error) {
         res.status(500).json({ message: 'Gagal buat kategori', error });
     }
 };
 
-// 4. Update Kategori (INTI PERMINTAAN ANDA)
+// 4. UPDATE KATEGORI
 exports.updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
 
     try {
-        const query = 'UPDATE product_categories SET CATEGORY_NAME = ? WHERE CATEGORY_ID = ?';
-        const [result] = await db.query(query, [name, id]);
-
+        const [result] = await db.query('UPDATE product_categories SET CATEGORY = ? WHERE CATEGORY_ID = ?', [name, id]);
         if (result.affectedRows === 0) return res.status(404).json({ message: 'Kategori tidak ditemukan' });
         res.json({ message: 'Kategori berhasil diupdate' });
     } catch (error) {
@@ -49,7 +48,7 @@ exports.updateCategory = async (req, res) => {
     }
 };
 
-// 5. Hapus Kategori
+// 5. HAPUS KATEGORI
 exports.deleteCategory = async (req, res) => {
     const { id } = req.params;
     try {

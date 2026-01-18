@@ -17,6 +17,11 @@ try {
         </a>
     </div>
 
+    <div class="mb-4 relative">
+        <input type="text" id="simpleSearch" placeholder="Cari nama atau data..." 
+               class="w-full pl-4 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+    </div>
+
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table class="w-full text-left text-sm text-gray-600">
             <thead class="bg-gray-50 text-gray-700 font-medium border-b border-gray-100">
@@ -64,5 +69,28 @@ try {
             if(res.ok) window.location.reload();
             else alert("Gagal menghapus user (Mungkin ada relasi transaksi)");
         } catch(e) { alert("Error koneksi"); }
+    }
+</script>
+
+<script>
+    // 1. Ambil elemen dengan Type Casting agar TypeScript tahu ini adalah Input
+    const searchInput = document.getElementById('simpleSearch') as HTMLInputElement | null;
+
+    // 2. Cek apakah elemen ada sebelum memasang Event Listener
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            // 3. Casting target event agar properti 'value' bisa dibaca
+            const target = e.target as HTMLInputElement;
+            const term = target.value.toLowerCase();
+            
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach((row) => {
+                // 4. Casting row ke HTMLElement agar properti 'style' bisa diakses
+                const htmlRow = row as HTMLElement;
+                const text = htmlRow.innerText.toLowerCase();
+                htmlRow.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
     }
 </script>

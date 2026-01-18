@@ -1,85 +1,98 @@
 const db = require('../config/database');
 
+
+
+// 2. AMBIL SEMUA TRANSAKSI (History)
+exports.getAllTransactions = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                o.ORDER_ID as id,
+                o.RECEIPT_NUMBER as invoice,
+                o.ORDER_DATE as date,
+                o.TOTAL_AMOUNT as total,
+                c.CUST_NAME as customer_name,
+                k.USERNAME as cashier_name
+            FROM orders o
+            LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
+            JOIN cashiers k ON o.USER_ID = k.USER_ID
+            ORDER BY o.ORDER_DATE DESC
+        `;
+        const [rows] = await db.query(query);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error', error });
+    }
+};
+
 // 1. BUAT TRANSAKSI BARU (CHECKOUT)
 exports.createTransaction = async (req, res) => {
-    // Data yang dikirim dari Frontend:
-    // { 
-    //   user_id: 'CSR001', 
-    //   cust_id: 'CUST001', 
-    //   method_id: 1, 
-    //   total_amount: 50000, 
-    //   items: [ { product_id: 1, price: 10000, qty: 2, subtotal: 20000 }, ... ] 
-    // }
     const { user_id, cust_id, method_id, total_amount, items } = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ message: 'Keranjang belanja kosong!' });
     }
 
-    // Mulai Koneksi Khusus untuk Transaction
     const connection = await db.getConnection();
     
     try {
-        // A. MULAI TRANSAKSI DATABASE
         await connection.beginTransaction();
 
-        // B. Buat Nomor Invoice (Opsional: INV-Timestamp)
+        // Generate Invoice String
         const invoiceNo = `INV/${Date.now()}`;
-
-        // C. Simpan Header Order
-        // Jika cust_id kosong string "", ubah jadi null
         const finalCustId = cust_id === "" ? null : cust_id;
 
+        // PERBAIKAN: Gunakan kolom 'RECEIPT_NUMBER' dan 'TOTAL' (Sesuai database lama)
         const [orderResult] = await connection.query(
-            `INSERT INTO orders (INVOICE_NO, ORDER_DATE, TOTAL_AMOUNT, CUST_ID, USER_ID, METHOD_ID) VALUES (?, NOW(), ?, ?, ?, ?)`,
+            `INSERT INTO orders (RECEIPT_NUMBER, ORDER_DATE, TOTAL, CUST_ID, USER_ID, METHOD_ID, ORDER_STATUS) VALUES (?, NOW(), ?, ?, ?, ?, 'PENDING')`,
             [invoiceNo, total_amount, finalCustId, user_id, method_id]
         );
         
         const newOrderId = orderResult.insertId;
 
-        // D. Simpan Detail Item & Kurangi Stok
+        // Simpan Detail Item
         for (const item of items) {
-            // 1. Masukkan ke order_details
+            // Pastikan kolom harga di order_details adalah PRICE_AT_PURCHASE (Sesuai DB lama)
             await connection.query(
-                `INSERT INTO order_details (ORDER_ID, PRODUCT_ID, PRICE_AT_PURCHASE, QTY, SUBTOTAL) VALUES (?, ?, ?, ?, ?)`,
-                [newOrderId, item.product_id, item.price, item.qty, item.subtotal]
+                `INSERT INTO order_details (ORDER_ID, PRODUCT_ID, QTY, PRICE_AT_PURCHASE, SUBTOTAL) VALUES (?, ?, ?, ?, ?)`,
+                [newOrderId, item.product_id, item.qty, item.price, item.subtotal]
             );
 
-            // 2. Kurangi Stok di tabel products
+            // Kurangi Stok
             await connection.query(
                 `UPDATE products SET STOCK = STOCK - ? WHERE PRODUCT_ID = ?`,
                 [item.qty, item.product_id]
             );
         }
 
-        // E. COMMIT (Simpan Permanen)
         await connection.commit();
-        
         res.status(201).json({ 
-            message: 'Transaksi Berhasil!', 
+            message: 'Transaksi Berhasil', 
             order_id: newOrderId,
             invoice: invoiceNo 
         });
 
     } catch (error) {
-        // F. ROLLBACK (Batalkan semua jika ada 1 error)
         await connection.rollback();
-        console.error("Transaksi Gagal:", error);
-        res.status(500).json({ message: 'Transaksi Gagal', error: error.message });
+        console.error("Transaction Error:", error);
+        res.status(500).json({ message: 'Transaksi Gagal', error });
     } finally {
-        connection.release(); // Tutup koneksi
+        connection.release();
     }
 };
 
-// A. AMBIL PESANAN BARU (PENDING) - UNTUK MENU ORDERS
+// 2. GET PENDING ORDERS (Pesanan Masuk)
 exports.getPendingOrders = async (req, res) => {
     try {
         const query = `
             SELECT 
-                o.ORDER_ID as id, o.INVOICE_NO as invoice, o.ORDER_DATE as date, 
-                o.TOTAL_AMOUNT as total, o.ORDER_STATUS as status,
+                o.ORDER_ID as id, 
+                o.RECEIPT_NUMBER as invoice,  -- PERBAIKAN: Gunakan RECEIPT_NUMBER
+                o.ORDER_DATE as date, 
+                o.TOTAL as total, 
+                o.ORDER_STATUS as status,
                 c.CUST_NAME as customer_name,
-                pm.METHOD_NAME as method
+                pm.METHOD as method
             FROM orders o
             LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
             JOIN payment_methods pm ON o.METHOD_ID = pm.METHOD_ID
@@ -89,19 +102,23 @@ exports.getPendingOrders = async (req, res) => {
         const [rows] = await db.query(query);
         res.json(rows);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server Error', error });
     }
 };
 
-// B. AMBIL RIWAYAT TRANSAKSI (COMPLETED) - UNTUK MENU PENJUALAN
+// 3. GET HISTORY TRANSACTIONS (Riwayat)
 exports.getHistoryTransactions = async (req, res) => {
     try {
         const query = `
             SELECT 
-                o.ORDER_ID as id, o.INVOICE_NO as invoice, o.ORDER_DATE as date, 
-                o.TOTAL_AMOUNT as total, o.ORDER_STATUS as status,
+                o.ORDER_ID as id, 
+                o.RECEIPT_NUMBER as invoice, -- PERBAIKAN: Gunakan RECEIPT_NUMBER
+                o.ORDER_DATE as date, 
+                o.TOTAL as total, 
+                o.ORDER_STATUS as status,
                 c.CUST_NAME as customer_name,
-                pm.METHOD_NAME as method
+                pm.METHOD as method
             FROM orders o
             LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
             JOIN payment_methods pm ON o.METHOD_ID = pm.METHOD_ID
@@ -115,21 +132,67 @@ exports.getHistoryTransactions = async (req, res) => {
     }
 };
 
-// C. PROSES ORDER (SELESAI / BATAL)
+// 4. GET DETAIL TRANSAKSI
+exports.getTransactionDetail = async (req, res) => {
+    const { id } = req.params;
+    try {
+        // PERBAIKAN: RECEIPT_NUMBER dan TOTAL
+        const [header] = await db.query(`
+            SELECT 
+                o.ORDER_ID, 
+                o.RECEIPT_NUMBER as INVOICE_NO, -- Alias agar frontend tidak perlu ubah kode
+                o.ORDER_DATE, 
+                o.TOTAL as TOTAL_AMOUNT, 
+                o.ORDER_STATUS, 
+                o.USER_ID,
+                c.CUST_NAME, 
+                c.ADDRESS as CUST_ADDRESS,
+                pm.METHOD,
+                u.USERNAME as CASHIER_NAME
+            FROM orders o
+            LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
+            LEFT JOIN cashiers u ON o.USER_ID = u.USER_ID
+            JOIN payment_methods pm ON o.METHOD_ID = pm.METHOD_ID
+            WHERE o.ORDER_ID = ?
+        `, [id]);
+
+        if (header.length === 0) return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
+
+        const [items] = await db.query(`
+            SELECT 
+                od.QTY, 
+                od.PRICE_AT_PURCHASE, 
+                od.SUBTOTAL,
+                p.PRODUCT_NAME
+            FROM order_details od
+            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+            WHERE od.ORDER_ID = ?
+        `, [id]);
+
+        res.json({
+            header: header[0],
+            items: items
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error', error });
+    }
+};
+
+// 5. UPDATE STATUS (PROSES PESANAN)
 exports.updateOrderStatus = async (req, res) => {
     const { id } = req.params;
-    const { status, user_id } = req.body; // Tambah user_id
+    const { status, user_id } = req.body;
 
     if (!['COMPLETED', 'CANCELLED'].includes(status)) {
         return res.status(400).json({ message: "Status tidak valid" });
     }
 
     try {
-        const connection = await db.getConnection(); // Pakai transaction biar aman
+        const connection = await db.getConnection();
         await connection.beginTransaction();
 
         try {
-            // 1. Jika Cancelled, kembalikan stok
             if (status === 'CANCELLED') {
                 const [items] = await connection.query('SELECT PRODUCT_ID, QTY FROM order_details WHERE ORDER_ID = ?', [id]);
                 for (const item of items) {
@@ -137,8 +200,6 @@ exports.updateOrderStatus = async (req, res) => {
                 }
             }
 
-            // 2. Update Status DAN Update Siapa Kasir yang memproses
-            // Jika user_id dikirim, kita update kolom USER_ID. Jika tidak, biarkan yang lama.
             if (user_id) {
                 await connection.query('UPDATE orders SET ORDER_STATUS = ?, USER_ID = ? WHERE ORDER_ID = ?', [status, user_id, id]);
             } else {
@@ -161,85 +222,221 @@ exports.updateOrderStatus = async (req, res) => {
     }
 };
 
-// 2. AMBIL SEMUA TRANSAKSI (History)
-exports.getAllTransactions = async (req, res) => {
-    try {
-        const query = `
-            SELECT 
-                o.ORDER_ID as id,
-                o.INVOICE_NO as invoice,
-                o.ORDER_DATE as date,
-                o.TOTAL_AMOUNT as total,
-                c.CUST_NAME as customer_name,
-                k.USERNAME as cashier_name
-            FROM orders o
-            LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
-            JOIN cashiers k ON o.USER_ID = k.USER_ID
-            ORDER BY o.ORDER_DATE DESC
-        `;
-        const [rows] = await db.query(query);
-        res.json(rows);
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error });
-    }
-};
-
-// 3. DETAIL TRANSAKSI (Invoice)
-exports.getTransactionDetail = async (req, res) => {
-    const { id } = req.params;
-    try {
-        // Ambil Header
-        const [header] = await db.query(`
-            SELECT 
-                o.ORDER_ID, o.INVOICE_NO, o.ORDER_DATE, o.TOTAL_AMOUNT,
-                c.CUST_NAME, c.ADDRESS as CUST_ADDRESS,
-                k.USERNAME as CASHIER_NAME,
-                pm.METHOD_NAME
-            FROM orders o
-            LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
-            JOIN cashiers k ON o.USER_ID = k.USER_ID
-            JOIN payment_methods pm ON o.METHOD_ID = pm.METHOD_ID
-            WHERE o.ORDER_ID = ?
-        `, [id]);
-
-        if (header.length === 0) return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
-
-        // Ambil Items
-        const [items] = await db.query(`
-            SELECT 
-                od.QTY, od.PRICE_AT_PURCHASE, od.SUBTOTAL,
-                p.PRODUCT_NAME
-            FROM order_details od
-            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
-            WHERE od.ORDER_ID = ?
-        `, [id]);
-
-        res.json({
-            header: header[0],
-            items: items
-        });
-
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error });
-    }
-};
-
-// 4. STATISTIK DASHBOARD (Untuk Home)
+// 4. STATISTIK DASHBOARD (LENGKAP DENGAN STOK & RECENT)
 exports.getDashboardStats = async (req, res) => {
     try {
-        // Hitung Pendapatan, Jumlah Transaksi, dll
-        const [rev] = await db.query('SELECT SUM(TOTAL_AMOUNT) as val FROM orders');
-        const [trx] = await db.query('SELECT COUNT(*) as val FROM orders');
-        const [prod] = await db.query('SELECT COUNT(*) as val FROM products');
-        const [cust] = await db.query('SELECT COUNT(*) as val FROM customers');
+        const connection = await db.getConnection();
+        const yearFilter = "1=1"; // Ambil semua data
+
+        // A. Ringkasan Umum
+        const [generalStats] = await connection.query(`
+            SELECT 
+                (SELECT SUM(TOTAL) FROM orders WHERE ORDER_STATUS = 'COMPLETED') as revenue,
+                (SELECT COUNT(*) FROM orders) as transactions,
+                (SELECT COUNT(*) FROM products) as products,
+                (SELECT COUNT(*) FROM customers) as customers
+        `);
+
+        // B. Champions (Juara)
+        const [champions] = await connection.query(`
+            SELECT 
+                (SELECT p.PRODUCT_NAME FROM order_details od JOIN orders o ON od.ORDER_ID=o.ORDER_ID JOIN products p ON od.PRODUCT_ID=p.PRODUCT_ID WHERE ${yearFilter} GROUP BY p.PRODUCT_ID ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_product_name,
+                (SELECT SUM(od.QTY) FROM order_details od JOIN orders o ON od.ORDER_ID=o.ORDER_ID WHERE ${yearFilter} GROUP BY od.PRODUCT_ID ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_product_val,
+                
+                (SELECT c.CUST_NAME FROM orders o JOIN customers c ON o.CUST_ID=c.CUST_ID WHERE ${yearFilter} GROUP BY c.CUST_ID ORDER BY COUNT(o.ORDER_ID) DESC LIMIT 1) AS top_cust_freq_name,
+                (SELECT COUNT(o.ORDER_ID) FROM orders o JOIN customers c ON o.CUST_ID=c.CUST_ID WHERE ${yearFilter} GROUP BY c.CUST_ID ORDER BY COUNT(o.ORDER_ID) DESC LIMIT 1) AS top_cust_freq_val,
+
+                (SELECT c.CUST_NAME FROM orders o JOIN customers c ON o.CUST_ID=c.CUST_ID WHERE ${yearFilter} GROUP BY c.CUST_ID ORDER BY SUM(o.TOTAL) DESC LIMIT 1) AS top_cust_rev_name,
+                (SELECT SUM(o.TOTAL) FROM orders o JOIN customers c ON o.CUST_ID=c.CUST_ID WHERE ${yearFilter} GROUP BY c.CUST_ID ORDER BY SUM(o.TOTAL) DESC LIMIT 1) AS top_cust_rev_val
+        `);
+
+        // C. Top 5 Produk Terlaris
+        const [topProducts] = await connection.query(`
+            SELECT p.PRODUCT_NAME as name, SUM(od.QTY) as sold
+            FROM order_details od JOIN orders o ON od.ORDER_ID = o.ORDER_ID JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+            WHERE ${yearFilter} GROUP BY p.PRODUCT_ID ORDER BY sold DESC LIMIT 5
+        `);
+
+        // --- FITUR BARU 1: DATA GRAFIK ---
+        const [monthlyProductSales] = await connection.query(`SELECT MONTH(o.ORDER_DATE) as month, SUM(od.SUBTOTAL) as revenue FROM order_details od JOIN orders o ON od.ORDER_ID = o.ORDER_ID WHERE ${yearFilter} GROUP BY month ORDER BY month`);
+        const [monthlyCustomerStats] = await connection.query(`SELECT MONTH(o.ORDER_DATE) as month, COUNT(o.ORDER_ID) as count FROM orders o WHERE ${yearFilter} GROUP BY month ORDER BY month`);
+
+        // --- FITUR BARU 2: METODE PEMBAYARAN (PIE CHART) ---
+        // Asumsi nama kolom di payment_methods adalah PAYMENT_METHOD atau METHOD_NAME. Sesuaikan jika beda.
+        const [paymentMethods] = await connection.query(`
+            SELECT pm.METHOD as method, COUNT(o.ORDER_ID) as count
+            FROM orders o JOIN payment_methods pm ON o.METHOD_ID = pm.METHOD_ID
+            GROUP BY pm.METHOD_ID
+        `);
+
+        // --- FITUR BARU 3: STOK MENIPIS (< 10 Item) ---
+        const [lowStock] = await connection.query(`
+            SELECT PRODUCT_NAME as name, STOCK as stock, IMAGE as image
+            FROM products WHERE STOCK <= 10 ORDER BY STOCK ASC LIMIT 5
+        `);
+
+        // --- FITUR BARU 4: 5 TRANSAKSI TERAKHIR ---
+        const [recentOrders] = await connection.query(`
+            SELECT o.RECEIPT_NUMBER as invoice, c.CUST_NAME as customer, o.TOTAL as total, o.ORDER_STATUS as status, o.ORDER_DATE as date
+            FROM orders o LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
+            ORDER BY o.ORDER_DATE DESC LIMIT 5
+        `);
+
+        connection.release();
 
         res.json({
-            revenue: rev[0].val || 0,
-            total_trx: trx[0].val || 0,
-            total_products: prod[0].val || 0,
-            total_customers: cust[0].val || 0
+            summary: generalStats[0],
+            champions: champions[0] || {},
+            topProducts: topProducts,
+            lowStock: lowStock,          // Data baru
+            recentOrders: recentOrders,  // Data baru
+            paymentStats: paymentMethods,// Data baru
+            charts: {
+                productSales: monthlyProductSales,
+                customerStats: monthlyCustomerStats
+            }
         });
+
     } catch (error) {
-        res.status(500).json({ message: 'Error Stats' });
+        console.error(error);
+        res.status(500).json({ message: 'Server Error', error });
+    }
+};
+
+
+exports.getAdvancedStats = async (req, res) => {
+    try {
+        const connection = await db.getConnection();
+        
+        // Filter Tahun Sebelumnya (Contoh: Jika sekarang 2026, ambil 2025)
+        // Jika ingin test data tahun ini, ubah "- 1" menjadi "- 0"
+        const prevYearCondition = "YEAR(o.ORDER_DATE) = YEAR(CURDATE()) - 1";
+
+        // ===================================================================================
+        // QUERY 1: BIG SCALAR SUBQUERY (Untuk Poin 1, 2, 3, 4)
+        // Mengambil juara-juara dalam satu kali tembak database
+        // ===================================================================================
+        const [champions] = await connection.query(`
+            SELECT 
+                -- 1. Produk Paling Banyak Dibeli (Qty)
+                (SELECT CONCAT(p.PRODUCT_NAME, ' (', SUM(od.QTY), ' item)')
+                 FROM order_details od 
+                 JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+                 JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+                 WHERE ${prevYearCondition}
+                 GROUP BY p.PRODUCT_ID 
+                 ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_product_qty,
+
+                -- 2. Customer Paling Sering Order (Frekuensi)
+                (SELECT CONCAT(c.CUST_NAME, ' (', COUNT(o.ORDER_ID), ' order)')
+                 FROM orders o
+                 JOIN customers c ON o.CUST_ID = c.CUST_ID
+                 WHERE ${prevYearCondition}
+                 GROUP BY c.CUST_ID
+                 ORDER BY COUNT(o.ORDER_ID) DESC LIMIT 1) AS top_cust_freq,
+
+                -- 3. Customer Nilai Order Terbesar (Nominal)
+                (SELECT CONCAT(c.CUST_NAME, ' (Rp ', FORMAT(SUM(o.TOTAL), 0), ')')
+                 FROM orders o
+                 JOIN customers c ON o.CUST_ID = c.CUST_ID
+                 WHERE ${prevYearCondition}
+                 GROUP BY c.CUST_ID
+                 ORDER BY SUM(o.TOTAL) DESC LIMIT 1) AS top_cust_val,
+
+                -- 4. Customer Item Terbanyak (Jumlah Produk)
+                (SELECT CONCAT(c.CUST_NAME, ' (', SUM(od.QTY), ' item)')
+                 FROM order_details od
+                 JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+                 JOIN customers c ON o.CUST_ID = c.CUST_ID
+                 WHERE ${prevYearCondition}
+                 GROUP BY c.CUST_ID
+                 ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_cust_items
+        `);
+
+        // ===================================================================================
+        // QUERY LIST (Untuk Poin 5 - 10)
+        // ===================================================================================
+
+        // 5. 10 Produk Terlaris
+        const [top10Products] = await connection.query(`
+            SELECT p.PRODUCT_NAME, SUM(od.QTY) as total_qty
+            FROM order_details od 
+            JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+            WHERE ${prevYearCondition}
+            GROUP BY p.PRODUCT_ID 
+            ORDER BY total_qty DESC LIMIT 10
+        `);
+
+        // 6. Profit (Revenue) Bulanan per Produk
+        const [monthlyProductProfit] = await connection.query(`
+            SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.SUBTOTAL) as total_profit
+            FROM order_details od 
+            JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+            WHERE ${prevYearCondition}
+            GROUP BY p.PRODUCT_ID, bulan
+            ORDER BY bulan ASC, total_profit DESC 
+        `);
+
+        // 7. Jumlah Penjualan (Qty) Bulanan per Produk
+        const [monthlyProductQty] = await connection.query(`
+            SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.QTY) as total_qty
+            FROM order_details od 
+            JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+            WHERE ${prevYearCondition}
+            GROUP BY p.PRODUCT_ID, bulan
+            ORDER BY bulan ASC, total_qty DESC 
+        `);
+
+        // 8. Jumlah Order Bulanan per Customer
+        const [monthlyCustOrder] = await connection.query(`
+            SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_trx
+            FROM orders o 
+            JOIN customers c ON o.CUST_ID = c.CUST_ID
+            WHERE ${prevYearCondition}
+            GROUP BY c.CUST_ID, bulan
+            ORDER BY bulan ASC, total_trx DESC 
+        `);
+
+        // 9. Total Nominal Bulanan per Customer
+        const [monthlyCustValue] = await connection.query(`
+            SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(o.TOTAL) as total_nominal
+            FROM orders o 
+            JOIN customers c ON o.CUST_ID = c.CUST_ID
+            WHERE ${prevYearCondition}
+            GROUP BY c.CUST_ID, bulan
+            ORDER BY bulan ASC, total_nominal DESC 
+        `);
+
+        // 10. Layanan Bulanan per Kasir
+        const [monthlyCashierService] = await connection.query(`
+            SELECT k.USERNAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_service
+            FROM orders o 
+            JOIN cashiers k ON o.USER_ID = k.USER_ID
+            WHERE ${prevYearCondition}
+            GROUP BY k.USER_ID, bulan
+            ORDER BY bulan ASC, total_service DESC 
+        `);
+
+        connection.release();
+
+        res.json({
+            year: new Date().getFullYear() - 1, // Info tahun yang ditampilkan
+            champions: champions[0],
+            lists: {
+                top10Products,
+                monthlyProductProfit,
+                monthlyProductQty,
+                monthlyCustOrder,
+                monthlyCustValue,
+                monthlyCashierService
+            }
+        });
+
+    } catch (error) {
+        console.error("Advanced Stats Error:", error);
+        res.status(500).json({ message: 'Server Error', error });
     }
 };

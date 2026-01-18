@@ -17,7 +17,7 @@ interface TransactionHeader {
     ORDER_DATE: string;
     TOTAL_AMOUNT: number;
     CASHIER_NAME: string; // Backend mengirim nama kasir
-    METHOD_NAME: string;  // Backend mengirim metode bayar
+    METHOD: string;  // Backend mengirim metode bayar
 }
 
 const { id } = Astro.params;
@@ -95,7 +95,7 @@ const items: TransactionItem[] = data?.items || [];
                     </div>
                     <div>
                         <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block">Metode Pembayaran</span>
-                        <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold">{trx?.METHOD_NAME}</span>
+                        <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold">{trx?.METHOD}</span>
                     </div>
                 </div>
             </div>

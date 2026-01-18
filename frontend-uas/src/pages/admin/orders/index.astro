@@ -1,5 +1,6 @@
 ---
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+
 const API_URL = import.meta.env.PUBLIC_API_URL;
 
 let orders = [];
@@ -13,6 +14,21 @@ try {
     <h1 class="text-2xl font-bold text-gray-800 mb-6">Pesanan Masuk (Pending)</h1>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+        
+            <div class="md:col-span-2">
+                <input type="text" id="searchTrx" placeholder="Cari No Invoice atau Nama Pelanggan..." 
+                       class="w-full px-4 py-2 border rounded-lg outline-none focus:border-blue-500">
+            </div>
+    
+            <div>
+                <input type="date" id="dateStart" class="w-full px-4 py-2 border rounded-lg text-gray-600 outline-none">
+            </div>
+    
+            <div>
+                <input type="date" id="dateEnd" class="w-full px-4 py-2 border rounded-lg text-gray-600 outline-none">
+            </div>
+        </div>
         <table class="w-full text-left text-sm text-gray-600">
             <thead class="bg-yellow-50 text-yellow-800 font-bold border-b border-yellow-100 uppercase text-xs">
                 <tr>
@@ -26,7 +42,8 @@ try {
             </thead>
             <tbody class="divide-y divide-gray-100">
                 {orders.length > 0 ? orders.map((o: any) => (
-                    <tr class="hover:bg-gray-50 transition">
+                    /* PERBAIKAN 1: Tambahkan data-date agar filter tanggal berfungsi */
+                    <tr class="hover:bg-gray-50 transition" data-date={o.date}>
                         <td class="p-4 font-mono text-blue-600 font-bold">{o.invoice}</td>
                         <td class="p-4">{new Date(o.date).toLocaleDateString('id-ID')}</td>
                         <td class="p-4 font-medium">{o.customer_name || 'Guest'}</td>
@@ -47,3 +64,51 @@ try {
         </table>
     </div>
 </DashboardLayout>
+
+<script>
+    /* PERBAIKAN 2: Tambahkan 'as HTMLInputElement' untuk menghilangkan error TypeScript */
+    const searchInput = document.getElementById('searchTrx') as HTMLInputElement;
+    const dateStartInput = document.getElementById('dateStart') as HTMLInputElement;
+    const dateEndInput = document.getElementById('dateEnd') as HTMLInputElement;
+    
+    function filterTransactions() {
+        // Karena sudah di-cast, properti .value sekarang dikenali
+        const term = searchInput.value.toLowerCase(); 
+        const startDate = dateStartInput.value ? new Date(dateStartInput.value) : null;
+        const endDate = dateEndInput.value ? new Date(dateEndInput.value) : null;
+        
+        // Set endDate ke akhir hari (23:59:59) agar pencarian akurat
+        if (endDate) endDate.setHours(23, 59, 59);
+
+        const rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach((row) => {
+            const htmlRow = row as HTMLElement; // Casting row agar properti style aman diakses
+
+            // Asumsi kolom tabel tidak berubah
+            const textContent = htmlRow.innerText.toLowerCase();
+            const matchesText = textContent.includes(term);
+
+            // Cek Tanggal dari atribut data-date
+            let matchesDate = true;
+            const rowDateStr = htmlRow.getAttribute('data-date');
+            
+            if (rowDateStr && (startDate || endDate)) {
+                const rowDate = new Date(rowDateStr);
+                // Reset jam rowDate agar komparasi adil (opsional, tergantung kebutuhan presisi)
+                // rowDate.setHours(0,0,0,0); 
+
+                if (startDate && rowDate < startDate) matchesDate = false;
+                if (endDate && rowDate > endDate) matchesDate = false;
+            }
+
+            // Tampilkan jika cocok keduanya
+            htmlRow.style.display = (matchesText && matchesDate) ? '' : 'none';
+        });
+    }
+
+    // Tambahkan event listener jika elemen ditemukan
+    if (searchInput) searchInput.addEventListener('input', filterTransactions);
+    if (dateStartInput) dateStartInput.addEventListener('change', filterTransactions);
+    if (dateEndInput) dateEndInput.addEventListener('change', filterTransactions);
+</script>

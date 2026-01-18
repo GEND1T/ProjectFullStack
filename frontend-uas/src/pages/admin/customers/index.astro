@@ -16,6 +16,10 @@ try {
             + Tambah Pelanggan
         </a>
     </div>
+    <div class="mb-4 relative">
+        <input type="text" id="simpleSearch" placeholder="Cari nama atau data..." 
+               class="w-full pl-4 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+    </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table class="w-full text-left text-sm text-gray-600">
@@ -61,5 +65,30 @@ try {
             if(res.ok) window.location.reload();
             else alert("Gagal hapus (Mungkin ada riwayat transaksi)");
         } catch(e) { alert("Error koneksi"); }
+    }
+</script>
+
+<script>
+    // 1. Ambil elemen dengan Type Casting
+    const searchInput = document.getElementById('simpleSearch') as HTMLInputElement | null;
+
+    // 2. Pastikan elemen ada (Guard Clause)
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            // 3. Casting target event ke HTMLInputElement agar properti .value terbaca
+            const target = e.target as HTMLInputElement;
+            const term = target.value.toLowerCase();
+            
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach((row) => {
+                // 4. Casting row ke HTMLElement agar properti .style terbaca
+                const htmlRow = row as HTMLElement;
+                const text = htmlRow.innerText.toLowerCase();
+                
+                // Logic filter display
+                htmlRow.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
     }
 </script>

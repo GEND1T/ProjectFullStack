@@ -2,95 +2,277 @@
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 const API_URL = import.meta.env.PUBLIC_API_URL;
 
-let stats = {
-    revenue: 0,
-    total_trx: 0,
-    total_products: 0,
-    total_customers: 0
-};
+let stats = null;
 let errorMsg = null;
 
 try {
-    // Panggil API stats yang baru kita buat
-    // Pastikan path router backend sesuai: /transaksi/stats/dashboard
-    // Jika di backend Anda pakai prefix /api/transaksi, maka URL di bawah sudah benar
-    const res = await fetch(`${API_URL}/transaksi/stats/dashboard`);
+    const res = await fetch(`${API_URL}/transaksi/stats/advanced`);
     if (res.ok) {
         stats = await res.json();
     } else {
-        errorMsg = "Gagal memuat statistik.";
+        errorMsg = "Gagal memuat data statistik tahunan.";
     }
 } catch (e) {
     errorMsg = "Error koneksi server.";
 }
+
+const formatRupiah = (num) => "Rp " + parseInt(num).toLocaleString('id-ID');
+const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][idx - 1];
 ---
 
-<DashboardLayout title="Dashboard Overview" currentPath="dashboard">
+<DashboardLayout title="Laporan Tahunan" currentPath="dashboard">
     <div class="mb-8">
-        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p class="text-gray-500 text-sm">Ringkasan aktivitas toko Anda hari ini.</p>
+        <h1 class="text-2xl font-bold text-gray-800">Laporan Kinerja {stats?.year || 'Tahun Lalu'}</h1>
+        <p class="text-gray-500 text-sm">Analisis lengkap berdasarkan 10 indikator kinerja utama.</p>
     </div>
 
-    {errorMsg && <div class="p-3 mb-4 bg-red-100 text-red-700 rounded text-sm">{errorMsg}</div>}
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Pendapatan</p>
-                <h3 class="text-2xl font-bold text-emerald-600">
-                    Rp {parseInt(String(stats.revenue)).toLocaleString('id-ID')}
-                </h3>
-            </div>
-            <div class="p-3 bg-emerald-50 rounded-full text-emerald-600">
-                💰
-            </div>
+    {errorMsg && (
+        <div class="p-4 bg-red-100 text-red-700 rounded-lg mb-6 border border-red-200">
+            {errorMsg}
         </div>
+    )}
 
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Transaksi</p>
-                <h3 class="text-2xl font-bold text-blue-600">
-                    {stats.total_trx}
-                </h3>
+    {stats && (
+        <div class="space-y-8">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-gradient-to-br from-emerald-50 to-white p-6 rounded-xl border border-emerald-100 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">📦</div>
+                    <p class="text-xs font-bold text-emerald-600 uppercase mb-2">Produk Paling Laris</p>
+                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_product_qty || 'Belum ada data'}</h3>
+                    <p class="text-xs text-gray-500 mt-1">Berdasarkan total quantity terjual</p>
+                </div>
+
+                <div class="bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">🏃</div>
+                    <p class="text-xs font-bold text-blue-600 uppercase mb-2">Pelanggan Terbaik</p>
+                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_cust_freq || 'Belum ada data'}</h3>
+                    <p class="text-xs text-gray-500 mt-1">Berdasarkan frekuensi transaksi</p>
+                </div>
+
+                <div class="bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl border border-purple-100 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">👑</div>
+                    <p class="text-xs font-bold text-purple-600 uppercase mb-2">Pelanggan Sultan</p>
+                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_cust_val || 'Belum ada data'}</h3>
+                    <p class="text-xs text-gray-500 mt-1">Berdasarkan total nominal uang</p>
+                </div>
+
+                <div class="bg-gradient-to-br from-orange-50 to-white p-6 rounded-xl border border-orange-100 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">🛍️</div>
+                    <p class="text-xs font-bold text-orange-600 uppercase mb-2">Pemborong Item</p>
+                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_cust_items || 'Belum ada data'}</h3>
+                    <p class="text-xs text-gray-500 mt-1">Berdasarkan jumlah barang dibeli</p>
+                </div>
             </div>
-            <div class="p-3 bg-blue-50 rounded-full text-blue-600">
-                🧾
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4 bg-gray-50 border-b border-gray-100">
+                    <h3 class="font-bold text-gray-700">Top 10 Produk Terlaris Tahun Lalu</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-white text-gray-500 border-b">
+                            <tr>
+                                <th class="p-3 w-10 text-center">#</th>
+                                <th class="p-3">Nama Produk</th>
+                                <th class="p-3 text-right">Total Terjual</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-50">
+                            {stats.lists.top10Products.map((item, idx) => (
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-3 text-center font-bold text-gray-400">{idx + 1}</td>
+                                    <td class="p-3 font-medium text-gray-800">{item.PRODUCT_NAME}</td>
+                                    <td class="p-3 text-right font-bold text-emerald-600">{item.total_qty}</td>
+                                </tr>
+                            ))}
+                            {stats.lists.top10Products.length === 0 && <tr><td colspan="3" class="p-4 text-center text-gray-400">Tidak ada data</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                
+                <div class="border-b border-gray-100">
+                    <div class="p-4 bg-gray-50">
+                        <h3 class="font-bold text-gray-700">Analisis Bulanan Detail</h3>
+                        <p class="text-xs text-gray-400">Pilih kategori di bawah untuk melihat data</p>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 p-4 bg-white">
+                        <button onclick="switchTab('profit')" id="btn-profit" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600">
+                            Profit Produk
+                        </button>
+                        <button onclick="switchTab('qty')" id="btn-qty" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                            Penjualan (Qty)
+                        </button>
+                        <button onclick="switchTab('cust-order')" id="btn-cust-order" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                            Freq Customer
+                        </button>
+                        <button onclick="switchTab('cust-val')" id="btn-cust-val" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                            Nominal Customer
+                        </button>
+                        <button onclick="switchTab('kasir')" id="btn-kasir" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                            Kinerja Kasir
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    
+                    <div id="tab-profit" class="tab-content block h-96 overflow-y-auto custom-scrollbar">
+                        <div class="mb-2 p-2 bg-green-50 text-green-700 text-xs rounded border border-green-100 font-medium">
+                            Menampilkan keuntungan (Revenue) per produk setiap bulannya.
+                        </div>
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Produk</th><th class="p-3 text-right">Profit</th></tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                {stats.lists.monthlyProductProfit.map(i => (
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
+                                        <td class="p-3">{i.PRODUCT_NAME}</td>
+                                        <td class="p-3 text-right font-mono text-green-600 font-bold">{formatRupiah(i.total_profit)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="tab-qty" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
+                         <div class="mb-2 p-2 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100 font-medium">
+                            Menampilkan jumlah item produk yang terjual setiap bulannya.
+                        </div>
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Produk</th><th class="p-3 text-right">Qty Terjual</th></tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                {stats.lists.monthlyProductQty.map(i => (
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
+                                        <td class="p-3">{i.PRODUCT_NAME}</td>
+                                        <td class="p-3 text-right font-bold text-gray-800">{i.total_qty} Unit</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="tab-cust-order" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
+                        <div class="mb-2 p-2 bg-indigo-50 text-indigo-700 text-xs rounded border border-indigo-100 font-medium">
+                            Menampilkan seberapa sering customer melakukan order per bulan.
+                        </div>
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Customer</th><th class="p-3 text-right">Total Transaksi</th></tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                {stats.lists.monthlyCustOrder.map(i => (
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
+                                        <td class="p-3">{i.CUST_NAME}</td>
+                                        <td class="p-3 text-right font-bold text-blue-600">{i.total_trx}x Order</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="tab-cust-val" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
+                         <div class="mb-2 p-2 bg-purple-50 text-purple-700 text-xs rounded border border-purple-100 font-medium">
+                            Menampilkan total uang yang dibelanjakan customer per bulan.
+                        </div>
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Customer</th><th class="p-3 text-right">Total Belanja</th></tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                {stats.lists.monthlyCustValue.map(i => (
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
+                                        <td class="p-3">{i.CUST_NAME}</td>
+                                        <td class="p-3 text-right font-mono text-purple-600 font-bold">{formatRupiah(i.total_nominal)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="tab-kasir" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
+                         <div class="mb-2 p-2 bg-orange-50 text-orange-700 text-xs rounded border border-orange-100 font-medium">
+                            Menampilkan kinerja kasir dalam melayani transaksi per bulan.
+                        </div>
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Kasir</th><th class="p-3 text-right">Dilayani</th><th class="p-3 w-1/3">Visual</th></tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                {stats.lists.monthlyCashierService.map(i => (
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
+                                        <td class="p-3 font-bold">{i.USERNAME}</td>
+                                        <td class="p-3 text-right">{i.total_service} Trx</td>
+                                        <td class="p-3">
+                                            <div class="bg-gray-100 h-2 rounded-full w-full overflow-hidden">
+                                                <div class="bg-orange-500 h-2 rounded-full" style={`width: ${Math.min(i.total_service * 5, 100)}%`}></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
-
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Produk</p>
-                <h3 class="text-2xl font-bold text-gray-800">
-                    {stats.total_products}
-                </h3>
-            </div>
-            <div class="p-3 bg-orange-50 rounded-full text-orange-600">
-                📦
-            </div>
-        </div>
-
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-            <div>
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Pelanggan</p>
-                <h3 class="text-2xl font-bold text-purple-600">
-                    {stats.total_customers}
-                </h3>
-            </div>
-            <div class="p-3 bg-purple-50 rounded-full text-purple-600">
-                👥
-            </div>
-        </div>
-    </div>
-
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="font-bold text-gray-800 mb-4">Aktivitas Terbaru</h3>
-        <p class="text-gray-500 text-sm italic">
-            Fitur grafik penjualan bisa dikembangkan selanjutnya menggunakan library Chart.js
-        </p>
-    </div>
-
-    
-
+    )}
 </DashboardLayout>
+
+<script is:inline>
+    // Fungsi untuk ganti Tab
+    window.switchTab = function(tabName) {
+        // 1. Sembunyikan semua konten tab
+        const allContents = document.querySelectorAll('.tab-content');
+        allContents.forEach(el => el.classList.add('hidden'));
+
+        // 2. Tampilkan konten yang dipilih
+        const selectedContent = document.getElementById('tab-' + tabName);
+        if(selectedContent) selectedContent.classList.remove('hidden');
+
+        // 3. Reset style tombol
+        const allButtons = document.querySelectorAll('.tab-btn');
+        allButtons.forEach(btn => {
+            btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+            btn.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
+        });
+
+        // 4. Set style aktif ke tombol yang diklik
+        const selectedBtn = document.getElementById('btn-' + tabName);
+        if(selectedBtn) {
+            selectedBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-200');
+            selectedBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+        }
+    }
+</script>
+
+<style>
+    /* Custom Scrollbar agar tabel terlihat rapi */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #aaa;
+    }
+</style>

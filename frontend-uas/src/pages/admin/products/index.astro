@@ -31,6 +31,28 @@ try {
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-4 flex flex-col md:flex-row gap-4">
+        
+                <div class="flex-1 relative">
+                    <span class="material-icons-outlined absolute left-3 top-2.5 text-gray-400">search</span>
+                    <input type="text" id="searchInput" placeholder="Cari nama produk..." 
+                           class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+        
+                <select id="categoryFilter" class="w-full md:w-48 px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="">Semua Kategori</option>
+                    <option value="Makanan">Makanan</option>
+                    <option value="Minuman">Minuman</option>
+                    <option value="Elektronik">Elektronik</option>
+                </select>
+        
+                <select id="sortFilter" class="w-full md:w-48 px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="default">Urutkan: Default</option>
+                    <option value="price-asc">Harga: Rendah - Tinggi</option>
+                    <option value="price-desc">Harga: Tinggi - Rendah</option>
+                    <option value="name-asc">Nama: A - Z</option>
+                </select>
+            </div>
             <table class="w-full text-left text-sm text-gray-600">
                 <thead class="bg-gray-50 text-gray-700 font-bold border-b border-gray-100 uppercase text-xs tracking-wider">
                     <tr>
@@ -44,7 +66,6 @@ try {
                 <tbody class="divide-y divide-gray-100">
                     {products.length > 0 ? products.map((p: any) => (
                         <tr class="hover:bg-gray-50 transition-colors">
-                            
                             <td class="p-4">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 relative">
@@ -60,17 +81,14 @@ try {
                                     </div>
                                 </div>
                             </td>
-
                             <td class="p-4">
                                 <span class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-xs font-medium border border-blue-100">
                                     {p.category_name || 'Uncategorized'}
                                 </span>
                             </td>
-
                             <td class="p-4 text-right font-mono font-medium text-gray-700">
                                 Rp {parseInt(p.price).toLocaleString('id-ID')}
                             </td>
-
                             <td class="p-4 text-center">
                                 <span class={`px-2.5 py-1 rounded-full text-xs font-bold ${
                                     p.stock > 10 ? 'bg-emerald-100 text-emerald-700' : 
@@ -80,13 +98,11 @@ try {
                                     {p.stock}
                                 </span>
                             </td>
-    
-
                             <td class="p-4 text-center">
                                 <div class="flex justify-center gap-2">
-                                <a href={`/admin/products/edit/${p.id}`} class="bg-amber-400 text-white px-3 py-1.5 rounded text-xs">Edit</a>
-                                <button onclick={`deleteProduct('${p.id}')`} class="bg-red-500 text-white px-3 py-1.5 rounded text-xs">Hapus</button>
-                            </div>
+                                    <a href={`/admin/products/edit/${p.id}`} class="bg-amber-400 text-white px-3 py-1.5 rounded text-xs">Edit</a>
+                                    <button onclick={`deleteProduct('${p.id}', '${p.name}')`} class="bg-red-500 text-white px-3 py-1.5 rounded text-xs">Hapus</button>
+                                </div>
                             </td>
                         </tr>
                     )) : (
@@ -117,5 +133,81 @@ try {
         } catch (e) { 
             alert("Gagal terhubung ke server"); 
         }
+    }
+</script>
+
+<script>
+    // 1. DEFINISI ELEMENT & GUARD CLAUSE (PENTING!)
+    // Kita cek dulu elemen-elemen ini ada atau tidak.
+    const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+    const categoryFilter = document.getElementById('categoryFilter') as HTMLSelectElement | null;
+    const sortFilter = document.getElementById('sortFilter') as HTMLSelectElement | null;
+    const tableBody = document.querySelector('tbody');
+
+    // SOLUSI UTAMA:
+    // Jika tableBody (atau elemen input) tidak ditemukan, hentikan script.
+    // TypeScript jadi tahu kalau kode di bawah baris ini, tableBody PASTI ada (tidak null).
+    if (!tableBody || !searchInput || !categoryFilter || !sortFilter) {
+        console.warn("Elemen tabel atau filter tidak ditemukan di DOM.");
+        // Kita gunakan 'throw' atau return di dalam module script untuk menghentikan eksekusi
+    } else {
+
+        // Karena sudah melewati pengecekan 'if' di atas, TypeScript tahu variabel ini aman.
+        const originalRows = Array.from(tableBody.querySelectorAll('tr')); 
+
+        // 2. FUNGSI FILTER UTAMA
+        const filterTable = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const categoryTerm = categoryFilter.value.toLowerCase();
+            const sortValue = sortFilter.value;
+
+            // A. FILTERING
+            let visibleRows = originalRows.filter(row => {
+                const rowEl = row as HTMLElement;
+                // Menggunakan Optional Chaining (?.) jaga-jaga elemen anak tidak ada
+                const productName = rowEl.children[0]?.textContent?.toLowerCase() || ''; 
+                const categoryName = rowEl.children[1]?.textContent?.toLowerCase() || '';
+
+                const matchesSearch = productName.includes(searchTerm);
+                const matchesCategory = categoryTerm === '' || categoryName.includes(categoryTerm);
+
+                return matchesSearch && matchesCategory;
+            });
+
+            // B. SORTING
+            if (sortValue !== 'default') {
+                visibleRows.sort((a, b) => {
+                    const rowA = a as HTMLElement;
+                    const rowB = b as HTMLElement;
+                    
+                    const nameA = rowA.children[0]?.textContent?.toLowerCase() || '';
+                    const nameB = rowB.children[0]?.textContent?.toLowerCase() || '';
+                    
+                    const priceTextA = rowA.children[2]?.textContent || '0';
+                    const priceTextB = rowB.children[2]?.textContent || '0';
+                    const priceA = parseInt(priceTextA.replace(/[^0-9]/g, '')) || 0;
+                    const priceB = parseInt(priceTextB.replace(/[^0-9]/g, '')) || 0;
+
+                    if (sortValue === 'name-asc') return nameA.localeCompare(nameB);
+                    if (sortValue === 'price-asc') return priceA - priceB;
+                    if (sortValue === 'price-desc') return priceB - priceA;
+                    return 0;
+                });
+            }
+
+            // C. RENDER ULANG
+            tableBody.innerHTML = '';
+            visibleRows.forEach(row => tableBody.appendChild(row));
+
+            // Tampilkan pesan jika kosong
+            if (visibleRows.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400">Data tidak ditemukan</td></tr>`;
+            }
+        };
+
+        // 3. EVENT LISTENERS
+        searchInput.addEventListener('input', filterTable);
+        categoryFilter.addEventListener('change', filterTable);
+        sortFilter.addEventListener('change', filterTable);
     }
 </script>

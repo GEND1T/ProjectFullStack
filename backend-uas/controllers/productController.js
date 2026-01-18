@@ -2,7 +2,7 @@ const db = require('../config/database');
 const fs = require('fs');
 const path = require('path');
 
-// 1. Ambil Semua Produk (Join dengan Kategori)
+// 1. AMBIL SEMUA PRODUK
 exports.getAllProducts = async (req, res) => {
     try {
         const query = `
@@ -10,10 +10,10 @@ exports.getAllProducts = async (req, res) => {
                 p.PRODUCT_ID as id,
                 p.PRODUCT_NAME as name,
                 p.CATEGORY_ID as category_id,
-                c.CATEGORY_NAME as category_name,
+                c.CATEGORY as category_name,
                 p.PRICE as price,
                 p.STOCK as stock,
-                p.IMAGE_URL as image
+                p.IMAGE as image
             FROM products p
             LEFT JOIN product_categories c ON p.CATEGORY_ID = c.CATEGORY_ID
             ORDER BY p.PRODUCT_ID DESC
@@ -25,29 +25,14 @@ exports.getAllProducts = async (req, res) => {
     }
 };
 
-// 2. Ambil Kategori (Untuk Dropdown di Frontend)
-exports.getCategories = async (req, res) => {
-    try {
-        const query = 'SELECT CATEGORY_ID as id, CATEGORY_NAME as name FROM product_categories';
-        const [rows] = await db.query(query);
-        res.json(rows);
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error });
-    }
-};
-
-// 3. Ambil 1 Produk (Detail/Edit)
+// 2. AMBIL 1 PRODUK
 exports.getProductById = async (req, res) => {
     const { id } = req.params;
     try {
         const query = `
             SELECT 
-                PRODUCT_ID as id,
-                PRODUCT_NAME as name,
-                CATEGORY_ID as category_id,
-                PRICE as price,
-                STOCK as stock,
-                IMAGE_URL as image
+                PRODUCT_ID as id, PRODUCT_NAME as name, CATEGORY_ID as category_id, 
+                PRICE as price, STOCK as stock, IMAGE as image 
             FROM products WHERE PRODUCT_ID = ?
         `;
         const [rows] = await db.query(query, [id]);
@@ -58,48 +43,39 @@ exports.getProductById = async (req, res) => {
     }
 };
 
-// 4. Tambah Produk Baru (Create)
+// 3. TAMBAH PRODUK
 exports.createProduct = async (req, res) => {
     const { name, category_id, price, stock } = req.body;
-    
-    // Proses File Gambar
-    let imagePath = null;
-    if (req.file) {
-        // Simpan path relatif agar bisa diakses browser
-        imagePath = '/uploads/' + req.file.filename;
-    }
+    // Multer menyimpan file di req.file
+    const image = req.file ? `/uploads/${req.file.filename}` : null;
 
     try {
-        const query = `
-            INSERT INTO products 
-            (PRODUCT_NAME, CATEGORY_ID, PRICE, STOCK, IMAGE_URL, CREATED_AT) 
-            VALUES (?, ?, ?, ?, ?, NOW())
-        `;
-        await db.query(query, [name, category_id, price, stock, imagePath]);
+        const query = `INSERT INTO products (PRODUCT_NAME, CATEGORY_ID, PRICE, STOCK, IMAGE) VALUES (?, ?, ?, ?, ?)`;
+        await db.query(query, [name, category_id, price, stock, image]);
+        
         res.status(201).json({ message: 'Produk berhasil ditambahkan' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Gagal menambah produk', error });
+        res.status(500).json({ message: 'Gagal tambah produk', error });
     }
 };
 
-// 5. Update Produk
+// 4. UPDATE PRODUK
 exports.updateProduct = async (req, res) => {
     const { id } = req.params;
     const { name, category_id, price, stock } = req.body;
-    
-    // Cek apakah ada gambar baru yang diupload
-    const newImage = req.file ? '/uploads/' + req.file.filename : null;
+    const newImage = req.file ? `/uploads/${req.file.filename}` : null;
 
     try {
-        // Jika ada gambar baru, hapus gambar lama (Opsional, fitur advanced)
-        // Kita langsung update database saja
-        let query, params;
+        let query = '';
+        let params = [];
 
         if (newImage) {
-            query = `UPDATE products SET PRODUCT_NAME=?, CATEGORY_ID=?, PRICE=?, STOCK=?, IMAGE_URL=? WHERE PRODUCT_ID=?`;
+            // Update beserta gambar
+            query = `UPDATE products SET PRODUCT_NAME=?, CATEGORY_ID=?, PRICE=?, STOCK=?, IMAGE=? WHERE PRODUCT_ID=?`;
             params = [name, category_id, price, stock, newImage, id];
         } else {
+            // Update data saja
             query = `UPDATE products SET PRODUCT_NAME=?, CATEGORY_ID=?, PRICE=?, STOCK=? WHERE PRODUCT_ID=?`;
             params = [name, category_id, price, stock, id];
         }
@@ -113,21 +89,26 @@ exports.updateProduct = async (req, res) => {
     }
 };
 
-// 6. Hapus Produk
+// 5. HAPUS PRODUK
 exports.deleteProduct = async (req, res) => {
     const { id } = req.params;
     try {
-        // (Opsional) Ambil path gambar dulu untuk dihapus dari folder
-        // const [rows] = await db.query('SELECT IMAGE_URL FROM products WHERE PRODUCT_ID = ?', [id]);
-        
         const [result] = await db.query('DELETE FROM products WHERE PRODUCT_ID = ?', [id]);
         if (result.affectedRows === 0) return res.status(404).json({ message: 'Produk tidak ditemukan' });
         
         res.json({ message: 'Produk berhasil dihapus' });
     } catch (error) {
-        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-            return res.status(400).json({ message: 'Gagal: Produk ini ada di riwayat transaksi.' });
-        }
+        res.status(500).json({ message: 'Gagal hapus produk', error });
+    }
+};
+
+// 6. GET PRODUCTS BY CATEGORY
+exports.getCategories = async (req, res) => {
+    try {
+        const query = 'SELECT CATEGORY_ID as id, CATEGORY as name FROM product_categories';
+        const [rows] = await db.query(query);
+        res.json(rows);
+    } catch (error) {
         res.status(500).json({ message: 'Server Error', error });
     }
 };
