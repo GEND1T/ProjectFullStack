@@ -1,6 +1,5 @@
 const db = require('../config/database');
 
-// 1. Ambil Semua User
 exports.getAllUsers = async (req, res) => {
     try {
         const query = `
@@ -21,7 +20,7 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// 2. Ambil 1 User (Untuk Edit)
+
 exports.getUserById = async (req, res) => {
     const { id } = req.params;
     try {
@@ -45,12 +44,10 @@ exports.getUserById = async (req, res) => {
     }
 };
 
-// 3. Tambah User Baru
 exports.createUser = async (req, res) => {
-    // Data dari frontend
+
     const { id, name, email, phone, address, pob, dob, gender, password } = req.body;
 
-    // Validasi ID (Harus 8 Karakter)
     if (!id || id.length > 8) return res.status(400).json({ message: 'ID Wajib diisi (Maks 8 Karakter)!' });
 
     try {
@@ -59,7 +56,7 @@ exports.createUser = async (req, res) => {
             (USER_ID, USERNAME, EMAIL, CONTACT_NUMBER, ADDRESS, PLACE_OF_BIRTH, DATE_OF_BIRTH, GENDER_ID, PASSWORD, CREATED_AT) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
-        // Password sementara disimpan plain text dulu (nanti kita enkripsi saat bikin Login)
+
         await db.query(query, [id, name, email, phone, address, pob, dob, gender, password || '123456']);
         
         res.status(201).json({ message: 'User berhasil ditambahkan' });
@@ -70,7 +67,6 @@ exports.createUser = async (req, res) => {
     }
 };
 
-// 4. Update User
 exports.updateUser = async (req, res) => {
     const { id } = req.params;
     const { name, email, phone, address, pob, dob, gender } = req.body;
@@ -90,7 +86,6 @@ exports.updateUser = async (req, res) => {
     }
 };
 
-// 5. Hapus User
 exports.deleteUser = async (req, res) => {
     const { id } = req.params;
     try {

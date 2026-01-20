@@ -1,8 +1,6 @@
 const db = require('../config/database');
 
 
-
-// 2. AMBIL SEMUA TRANSAKSI (History)
 exports.getAllTransactions = async (req, res) => {
     try {
         const query = `
@@ -25,7 +23,6 @@ exports.getAllTransactions = async (req, res) => {
     }
 };
 
-// 1. BUAT TRANSAKSI BARU (CHECKOUT)
 exports.createTransaction = async (req, res) => {
     const { user_id, cust_id, method_id, total_amount, items } = req.body;
 
@@ -38,11 +35,9 @@ exports.createTransaction = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        // Generate Invoice String
         const invoiceNo = `INV/${Date.now()}`;
         const finalCustId = cust_id === "" ? null : cust_id;
 
-        // PERBAIKAN: Gunakan kolom 'RECEIPT_NUMBER' dan 'TOTAL' (Sesuai database lama)
         const [orderResult] = await connection.query(
             `INSERT INTO orders (RECEIPT_NUMBER, ORDER_DATE, TOTAL, CUST_ID, USER_ID, METHOD_ID, ORDER_STATUS) VALUES (?, NOW(), ?, ?, ?, ?, 'PENDING')`,
             [invoiceNo, total_amount, finalCustId, user_id, method_id]
@@ -50,15 +45,12 @@ exports.createTransaction = async (req, res) => {
         
         const newOrderId = orderResult.insertId;
 
-        // Simpan Detail Item
         for (const item of items) {
-            // Pastikan kolom harga di order_details adalah PRICE_AT_PURCHASE (Sesuai DB lama)
             await connection.query(
                 `INSERT INTO order_details (ORDER_ID, PRODUCT_ID, QTY, PRICE_AT_PURCHASE, SUBTOTAL) VALUES (?, ?, ?, ?, ?)`,
                 [newOrderId, item.product_id, item.qty, item.price, item.subtotal]
             );
 
-            // Kurangi Stok
             await connection.query(
                 `UPDATE products SET STOCK = STOCK - ? WHERE PRODUCT_ID = ?`,
                 [item.qty, item.product_id]
@@ -81,7 +73,6 @@ exports.createTransaction = async (req, res) => {
     }
 };
 
-// 2. GET PENDING ORDERS (Pesanan Masuk)
 exports.getPendingOrders = async (req, res) => {
     try {
         const query = `
@@ -107,13 +98,12 @@ exports.getPendingOrders = async (req, res) => {
     }
 };
 
-// 3. GET HISTORY TRANSACTIONS (Riwayat)
 exports.getHistoryTransactions = async (req, res) => {
     try {
         const query = `
             SELECT 
                 o.ORDER_ID as id, 
-                o.RECEIPT_NUMBER as invoice, -- PERBAIKAN: Gunakan RECEIPT_NUMBER
+                o.RECEIPT_NUMBER as invoice,
                 o.ORDER_DATE as date, 
                 o.TOTAL as total, 
                 o.ORDER_STATUS as status,
@@ -132,15 +122,13 @@ exports.getHistoryTransactions = async (req, res) => {
     }
 };
 
-// 4. GET DETAIL TRANSAKSI
 exports.getTransactionDetail = async (req, res) => {
     const { id } = req.params;
     try {
-        // PERBAIKAN: RECEIPT_NUMBER dan TOTAL
         const [header] = await db.query(`
             SELECT 
                 o.ORDER_ID, 
-                o.RECEIPT_NUMBER as INVOICE_NO, -- Alias agar frontend tidak perlu ubah kode
+                o.RECEIPT_NUMBER as INVOICE_NO,
                 o.ORDER_DATE, 
                 o.TOTAL as TOTAL_AMOUNT, 
                 o.ORDER_STATUS, 
@@ -179,7 +167,6 @@ exports.getTransactionDetail = async (req, res) => {
     }
 };
 
-// 5. UPDATE STATUS (PROSES PESANAN)
 exports.updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status, user_id } = req.body;
@@ -222,13 +209,12 @@ exports.updateOrderStatus = async (req, res) => {
     }
 };
 
-// 4. STATISTIK DASHBOARD (LENGKAP DENGAN STOK & RECENT)
 exports.getDashboardStats = async (req, res) => {
     try {
         const connection = await db.getConnection();
-        const yearFilter = "1=1"; // Ambil semua data
+        const yearFilter = "1=1"; 
 
-        // A. Ringkasan Umum
+       
         const [generalStats] = await connection.query(`
             SELECT 
                 (SELECT SUM(TOTAL) FROM orders WHERE ORDER_STATUS = 'COMPLETED') as revenue,
@@ -237,7 +223,6 @@ exports.getDashboardStats = async (req, res) => {
                 (SELECT COUNT(*) FROM customers) as customers
         `);
 
-        // B. Champions (Juara)
         const [champions] = await connection.query(`
             SELECT 
                 (SELECT p.PRODUCT_NAME FROM order_details od JOIN orders o ON od.ORDER_ID=o.ORDER_ID JOIN products p ON od.PRODUCT_ID=p.PRODUCT_ID WHERE ${yearFilter} GROUP BY p.PRODUCT_ID ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_product_name,
@@ -250,32 +235,26 @@ exports.getDashboardStats = async (req, res) => {
                 (SELECT SUM(o.TOTAL) FROM orders o JOIN customers c ON o.CUST_ID=c.CUST_ID WHERE ${yearFilter} GROUP BY c.CUST_ID ORDER BY SUM(o.TOTAL) DESC LIMIT 1) AS top_cust_rev_val
         `);
 
-        // C. Top 5 Produk Terlaris
         const [topProducts] = await connection.query(`
             SELECT p.PRODUCT_NAME as name, SUM(od.QTY) as sold
             FROM order_details od JOIN orders o ON od.ORDER_ID = o.ORDER_ID JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
             WHERE ${yearFilter} GROUP BY p.PRODUCT_ID ORDER BY sold DESC LIMIT 5
         `);
 
-        // --- FITUR BARU 1: DATA GRAFIK ---
         const [monthlyProductSales] = await connection.query(`SELECT MONTH(o.ORDER_DATE) as month, SUM(od.SUBTOTAL) as revenue FROM order_details od JOIN orders o ON od.ORDER_ID = o.ORDER_ID WHERE ${yearFilter} GROUP BY month ORDER BY month`);
         const [monthlyCustomerStats] = await connection.query(`SELECT MONTH(o.ORDER_DATE) as month, COUNT(o.ORDER_ID) as count FROM orders o WHERE ${yearFilter} GROUP BY month ORDER BY month`);
 
-        // --- FITUR BARU 2: METODE PEMBAYARAN (PIE CHART) ---
-        // Asumsi nama kolom di payment_methods adalah PAYMENT_METHOD atau METHOD_NAME. Sesuaikan jika beda.
         const [paymentMethods] = await connection.query(`
             SELECT pm.METHOD as method, COUNT(o.ORDER_ID) as count
             FROM orders o JOIN payment_methods pm ON o.METHOD_ID = pm.METHOD_ID
             GROUP BY pm.METHOD_ID
         `);
 
-        // --- FITUR BARU 3: STOK MENIPIS (< 10 Item) ---
         const [lowStock] = await connection.query(`
             SELECT PRODUCT_NAME as name, STOCK as stock, IMAGE as image
             FROM products WHERE STOCK <= 10 ORDER BY STOCK ASC LIMIT 5
         `);
 
-        // --- FITUR BARU 4: 5 TRANSAKSI TERAKHIR ---
         const [recentOrders] = await connection.query(`
             SELECT o.RECEIPT_NUMBER as invoice, c.CUST_NAME as customer, o.TOTAL as total, o.ORDER_STATUS as status, o.ORDER_DATE as date
             FROM orders o LEFT JOIN customers c ON o.CUST_ID = c.CUST_ID
@@ -288,9 +267,9 @@ exports.getDashboardStats = async (req, res) => {
             summary: generalStats[0],
             champions: champions[0] || {},
             topProducts: topProducts,
-            lowStock: lowStock,          // Data baru
-            recentOrders: recentOrders,  // Data baru
-            paymentStats: paymentMethods,// Data baru
+            lowStock: lowStock,          
+            recentOrders: recentOrders,  
+            paymentStats: paymentMethods,
             charts: {
                 productSales: monthlyProductSales,
                 customerStats: monthlyCustomerStats
@@ -312,10 +291,6 @@ exports.getAdvancedStats = async (req, res) => {
         // Jika ingin test data tahun ini, ubah "- 1" menjadi "- 0"
         const prevYearCondition = "YEAR(o.ORDER_DATE) = YEAR(CURDATE()) - 1";
 
-        // ===================================================================================
-        // QUERY 1: BIG SCALAR SUBQUERY (Untuk Poin 1, 2, 3, 4)
-        // Mengambil juara-juara dalam satu kali tembak database
-        // ===================================================================================
         const [champions] = await connection.query(`
             SELECT 
                 -- 1. Produk Paling Banyak Dibeli (Qty)
@@ -353,11 +328,6 @@ exports.getAdvancedStats = async (req, res) => {
                  ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_cust_items
         `);
 
-        // ===================================================================================
-        // QUERY LIST (Untuk Poin 5 - 10)
-        // ===================================================================================
-
-        // 5. 10 Produk Terlaris
         const [top10Products] = await connection.query(`
             SELECT p.PRODUCT_NAME, SUM(od.QTY) as total_qty
             FROM order_details od 
@@ -368,7 +338,6 @@ exports.getAdvancedStats = async (req, res) => {
             ORDER BY total_qty DESC LIMIT 10
         `);
 
-        // 6. Profit (Revenue) Bulanan per Produk
         const [monthlyProductProfit] = await connection.query(`
             SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.SUBTOTAL) as total_profit
             FROM order_details od 
@@ -379,7 +348,6 @@ exports.getAdvancedStats = async (req, res) => {
             ORDER BY bulan ASC, total_profit DESC 
         `);
 
-        // 7. Jumlah Penjualan (Qty) Bulanan per Produk
         const [monthlyProductQty] = await connection.query(`
             SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.QTY) as total_qty
             FROM order_details od 
@@ -390,7 +358,6 @@ exports.getAdvancedStats = async (req, res) => {
             ORDER BY bulan ASC, total_qty DESC 
         `);
 
-        // 8. Jumlah Order Bulanan per Customer
         const [monthlyCustOrder] = await connection.query(`
             SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_trx
             FROM orders o 
@@ -400,7 +367,6 @@ exports.getAdvancedStats = async (req, res) => {
             ORDER BY bulan ASC, total_trx DESC 
         `);
 
-        // 9. Total Nominal Bulanan per Customer
         const [monthlyCustValue] = await connection.query(`
             SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(o.TOTAL) as total_nominal
             FROM orders o 
@@ -410,7 +376,6 @@ exports.getAdvancedStats = async (req, res) => {
             ORDER BY bulan ASC, total_nominal DESC 
         `);
 
-        // 10. Layanan Bulanan per Kasir
         const [monthlyCashierService] = await connection.query(`
             SELECT k.USERNAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_service
             FROM orders o 
@@ -423,7 +388,7 @@ exports.getAdvancedStats = async (req, res) => {
         connection.release();
 
         res.json({
-            year: new Date().getFullYear() - 1, // Info tahun yang ditampilkan
+            year: new Date().getFullYear() - 1, 
             champions: champions[0],
             lists: {
                 top10Products,

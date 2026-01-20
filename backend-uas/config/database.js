@@ -2,15 +2,14 @@ const mysql = require('mysql2');
 
 const db = mysql.createPool({
     host: 'localhost',
-    user: 'root',      // Default XAMPP/Laragon
-    password: '',      // Default kosong
-    database: 'genexmart', // <--- Sesuai nama database baru Anda
+    user: 'root',      
+    password: '',      
+    database: 'genexmart', 
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
 });
 
-// Cek koneksi saat pertama kali jalan
 db.getConnection((err, connection) => {
     if (err) {
         console.error('❌ Database Gagal Terkoneksi:', err.message);

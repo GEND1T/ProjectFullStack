@@ -1,6 +1,5 @@
 const db = require('../config/database');
 
-// 1. Ambil Semua Customer
 exports.getAllCustomers = async (req, res) => {
     try {
         const query = `
@@ -21,7 +20,6 @@ exports.getAllCustomers = async (req, res) => {
     }
 };
 
-// 2. Ambil 1 Customer
 exports.getCustomerById = async (req, res) => {
     const { id } = req.params;
     try {
@@ -29,7 +27,6 @@ exports.getCustomerById = async (req, res) => {
         const [rows] = await db.query(query, [id]);
         if (rows.length === 0) return res.status(404).json({ message: 'Customer tidak ditemukan' });
         
-        // Mapping agar sesuai format frontend
         const data = rows[0];
         res.json({
             id: data.CUST_ID,
@@ -44,7 +41,6 @@ exports.getCustomerById = async (req, res) => {
     }
 };
 
-// 3. Tambah Customer
 exports.createCustomer = async (req, res) => {
     const { id, name, email, phone, address, gender } = req.body;
 
@@ -63,7 +59,6 @@ exports.createCustomer = async (req, res) => {
     }
 };
 
-// 4. Update Customer
 exports.updateCustomer = async (req, res) => {
     const { id } = req.params;
     const { name, email, phone, address, gender } = req.body;
@@ -83,7 +78,6 @@ exports.updateCustomer = async (req, res) => {
     }
 };
 
-// 5. Hapus Customer
 exports.deleteCustomer = async (req, res) => {
     const { id } = req.params;
     try {

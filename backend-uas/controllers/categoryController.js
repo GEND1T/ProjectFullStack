@@ -1,9 +1,7 @@
 const db = require('../config/database');
 
-// 1. AMBIL SEMUA KATEGORI
 exports.getAllCategories = async (req, res) => {
     try {
-        // Alias: CATEGORY_ID -> id, CATEGORY -> name
         const [rows] = await db.query('SELECT CATEGORY_ID as id, CATEGORY as name FROM product_categories ORDER BY CATEGORY ASC');
         res.json(rows);
     } catch (error) {
@@ -11,7 +9,6 @@ exports.getAllCategories = async (req, res) => {
     }
 };
 
-// 2. AMBIL 1 KATEGORI
 exports.getCategoryById = async (req, res) => {
     const { id } = req.params;
     try {
@@ -23,7 +20,6 @@ exports.getCategoryById = async (req, res) => {
     }
 };
 
-// 3. TAMBAH KATEGORI (Opsional)
 exports.createCategory = async (req, res) => {
     const { id, name } = req.body;
     try {
@@ -34,7 +30,6 @@ exports.createCategory = async (req, res) => {
     }
 };
 
-// 4. UPDATE KATEGORI
 exports.updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
@@ -48,7 +43,6 @@ exports.updateCategory = async (req, res) => {
     }
 };
 
-// 5. HAPUS KATEGORI
 exports.deleteCategory = async (req, res) => {
     const { id } = req.params;
     try {

@@ -2,7 +2,6 @@ const db = require('../config/database');
 const fs = require('fs');
 const path = require('path');
 
-// 1. AMBIL SEMUA PRODUK
 exports.getAllProducts = async (req, res) => {
     try {
         const query = `
@@ -25,7 +24,6 @@ exports.getAllProducts = async (req, res) => {
     }
 };
 
-// 2. AMBIL 1 PRODUK
 exports.getProductById = async (req, res) => {
     const { id } = req.params;
     try {
@@ -43,7 +41,6 @@ exports.getProductById = async (req, res) => {
     }
 };
 
-// 3. TAMBAH PRODUK
 exports.createProduct = async (req, res) => {
     const { name, category_id, price, stock } = req.body;
     // Multer menyimpan file di req.file
@@ -60,7 +57,6 @@ exports.createProduct = async (req, res) => {
     }
 };
 
-// 4. UPDATE PRODUK
 exports.updateProduct = async (req, res) => {
     const { id } = req.params;
     const { name, category_id, price, stock } = req.body;
@@ -71,11 +67,9 @@ exports.updateProduct = async (req, res) => {
         let params = [];
 
         if (newImage) {
-            // Update beserta gambar
             query = `UPDATE products SET PRODUCT_NAME=?, CATEGORY_ID=?, PRICE=?, STOCK=?, IMAGE=? WHERE PRODUCT_ID=?`;
             params = [name, category_id, price, stock, newImage, id];
         } else {
-            // Update data saja
             query = `UPDATE products SET PRODUCT_NAME=?, CATEGORY_ID=?, PRICE=?, STOCK=? WHERE PRODUCT_ID=?`;
             params = [name, category_id, price, stock, id];
         }
@@ -89,7 +83,6 @@ exports.updateProduct = async (req, res) => {
     }
 };
 
-// 5. HAPUS PRODUK
 exports.deleteProduct = async (req, res) => {
     const { id } = req.params;
     try {
@@ -102,7 +95,6 @@ exports.deleteProduct = async (req, res) => {
     }
 };
 
-// 6. GET PRODUCTS BY CATEGORY
 exports.getCategories = async (req, res) => {
     try {
         const query = 'SELECT CATEGORY_ID as id, CATEGORY as name FROM product_categories';

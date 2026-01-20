@@ -4,10 +4,10 @@ const transaksiController = require('../controllers/transaksiController');
 
 router.post('/checkout', transaksiController.createTransaction);
 
-// Route Baru
-router.get('/pending', transaksiController.getPendingOrders); // Ambil yang belum diproses
-router.get('/history', transaksiController.getHistoryTransactions); // Ambil yang sudah selesai
-router.put('/:id/status', transaksiController.updateOrderStatus); // Update Status
+
+router.get('/pending', transaksiController.getPendingOrders); 
+router.get('/history', transaksiController.getHistoryTransactions); 
+router.put('/:id/status', transaksiController.updateOrderStatus); 
 router.get('/stats/advanced', transaksiController.getAdvancedStats);
 router.get('/stats/dashboard', transaksiController.getDashboardStats);
 router.get('/:id', transaksiController.getTransactionDetail);
