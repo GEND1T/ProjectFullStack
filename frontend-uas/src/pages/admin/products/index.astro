@@ -5,22 +5,35 @@ const SERVER_URL = "http://localhost:3000";
 
 let products = [];
 let error = null;
+let categories = [];
 
 try {
     const response = await fetch(`${API_URL}/products`);
+
     if (!response.ok) throw new Error("Gagal mengambil data");
     const data = await response.json();
     products = data.data || data; 
 } catch (e) {
     error = "Gagal memuat produk. Pastikan backend berjalan.";
 }
+
+try {
+    const resCat = await fetch(`${API_URL}/products/categories`);
+    if (resCat.ok) {
+        categories = await resCat.json();
+    }
+} catch (e) {
+    console.error("Gagal memuat kategori", e);
+}
+
+
 ---
 
 <DashboardLayout title="Produk" currentPath="products">
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-800">Daftar Produk</h1>
-            <p class="text-sm text-gray-500">Kelola katalog barang toko anda</p>
+            <p class="text-sm text-gray-500"></p>
         </div>
         <a href="/admin/products/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow-sm flex items-center gap-2">
             <span>+</span> Tambah Produk
@@ -41,19 +54,8 @@ try {
         
                 <select id="categoryFilter" class="w-full md:w-48 px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                     <option value="">Semua Kategori</option>
-                    <option value="Alat Kebersihan"></option>
-                    <option value="Alat Makan"></option>
-                    <option value="Alat Masak"></option>
-                    <option value="Alat Mandi"></option>
-                    <option value="Bahan Dapur"></option>
-                    <option value="Bahan Makanan"></option>
-                    <option value="Bumbu Masak"></option>
-                    <option value="Hewan Peliharaan"></option>
-                    <option value="Makanan Peliharaan"></option>
-                    <option value="Minuman Peliharaan"></option>
-                    <option value="Obat Peliharaan"></option>
-                    <option value="Peralatan Peliharaan"></option>
-                    <option value="Sabun Peliharaan"></option>
+                    {categories.map((c: any) => <option value={c.name}>{c.name}</option>)}
+                    
                 </select>
         
                 <select id="sortFilter" class="w-full md:w-48 px-4 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none">

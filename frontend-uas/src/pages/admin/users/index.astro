@@ -36,7 +36,7 @@ try {
             <tbody class="divide-y divide-gray-100">
                 {Array.isArray(users) && users.length > 0 ? users.map((user: any) => (
                     <tr class="hover:bg-gray-50">
-                        <td class="p-4 font-mono text-xs">{user.id}</td>
+                        <td class="p-4 font-mono text-xs font-bold text-blue-600">{user.id}</td>
                         <td class="p-4 font-medium text-gray-800">{user.name}</td>
                         <td class="p-4">{user.email}</td>
                         <td class="p-4">{user.phone}</td>

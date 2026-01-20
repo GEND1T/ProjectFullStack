@@ -11,16 +11,14 @@ let products = [];
 let errorMsg = null;
 
 try {
-  // Fetch Paralel (Lebih cepat)
   const [catRes, prodRes] = await Promise.all([
     fetch(`${API_URL}/products/categories`),
     fetch(`${API_URL}/products`)
   ]);
 
-  // Parsing JSON
   categories = await catRes.json();
   const prodData = await prodRes.json();
-  products = prodData.data || []; // Handle jika backend bungkus di object {data: []}
+  products = prodData.data || []; 
 
 } catch (error) {
   console.error("Gagal connect ke backend:", error);
@@ -51,28 +49,44 @@ try {
     <section class="mb-12">
       <div class="flex justify-between items-end mb-6">
         <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-blue-600 pl-3">Kategori</h2>
+        <button id="reset-filter" class="text-sm text-blue-600 font-bold hover:underline hidden">
+            Tampilkan Semua
+        </button>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div class="cursor-pointer category-trigger transition transform hover:-translate-y-1" data-category="all">
+            <CategoryCard name="Semua" icon="grid_view" />
+        </div>
+
         {categories.map((cat: any) => (
-          // Icon bisa dinamis jika database punya kolom icon, atau default
-          <CategoryCard name={cat.name} icon="category" />
+          // 2. Bungkus CategoryCard dengan div yang bisa diklik dan punya data-category
+          <div class="cursor-pointer category-trigger transition transform hover:-translate-y-1" data-category={cat.name}>
+             <CategoryCard name={cat.name} icon="category" />
+          </div>
         ))}
       </div>
     </section>
 
     <section id="produk">
-      <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-blue-600 pl-3 mb-6">Produk Terbaru</h2>
+      <div class="flex items-center gap-2 mb-6">
+          <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-blue-600 pl-3">Produk Terbaru</h2>
+          <span id="active-category-label" class="text-gray-500 text-sm font-medium bg-gray-100 px-3 py-1 rounded-full hidden"></span>
+      </div>
 
       {products.length > 0 ? (
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="product-grid">
           {products.map((p: any) => (
-            <ProductCard 
-              id={p.id}
-              name={p.name} 
-              price={p.price} 
-              image={p.image}
-            />
+            // 3. PENTING: Bungkus ProductCard dengan div yang menyimpan nama kategori
+            // Pastikan backend mengirim field 'category_name' atau sesuaikan dengan nama kolom kategori di database Anda
+            <div class="product-item transition-all duration-300" data-category={p.category_name || p.Category?.name || "Uncategorized"}>
+                <ProductCard 
+                id={p.id}
+                name={p.name} 
+                price={p.price} 
+                image={p.image}
+                />
+            </div>
           ))}
         </div>
       ) : (
@@ -80,7 +94,86 @@ try {
           <p>Belum ada produk yang tersedia.</p>
         </div>
       )}
+      
+      <div id="empty-message" class="hidden text-center py-20 text-gray-500 bg-white rounded-xl border border-dashed">
+          <p>Tidak ada produk di kategori ini.</p>
+      </div>
     </section>
 
   </div>
 </Layout>
+<script>
+  // 1. Casting Element saat pengambilan awal agar TypeScript tahu tipenya
+  const categoryButtons = document.querySelectorAll('.category-trigger');
+  const productItems = document.querySelectorAll('.product-item');
+  const emptyMessage = document.getElementById('empty-message') as HTMLElement | null;
+  const resetBtn = document.getElementById('reset-filter') as HTMLElement | null;
+  const activeLabel = document.getElementById('active-category-label') as HTMLElement | null;
+
+  // 2. Berikan tipe data ': string' pada parameter
+  function filterProducts(categoryName: string) {
+      let visibleCount = 0;
+
+      // 3. Cek Null (Guard Clause) untuk activeLabel & resetBtn
+      if (activeLabel && resetBtn) {
+          if (categoryName === 'all') {
+              activeLabel.classList.add('hidden');
+              resetBtn.classList.add('hidden');
+          } else {
+              activeLabel.textContent = `Kategori: ${categoryName}`;
+              activeLabel.classList.remove('hidden');
+              resetBtn.classList.remove('hidden');
+          }
+      }
+
+      // Loop semua produk
+      productItems.forEach((element) => {
+          // 4. Casting ke HTMLElement agar properti '.style' dikenali
+          const item = element as HTMLElement;
+
+          // 5. Handle kemungkinan null pada getAttribute dengan '|| ""'
+          const productCat = item.getAttribute('data-category') || "";
+          
+          // Logic Cek
+          if (categoryName === 'all' || productCat.toLowerCase() === categoryName.toLowerCase()) {
+              item.style.display = 'block'; 
+              
+              // Animasi kecil saat muncul
+              item.style.opacity = '0';
+              setTimeout(() => item.style.opacity = '1', 50);
+              visibleCount++;
+          } else {
+              item.style.display = 'none'; 
+          }
+      });
+
+      // 6. Cek Null untuk emptyMessage
+      if (emptyMessage) {
+          if (visibleCount === 0) {
+              emptyMessage.classList.remove('hidden');
+          } else {
+              emptyMessage.classList.add('hidden');
+          }
+      }
+  }
+
+  // Event Listener untuk setiap tombol kategori
+  categoryButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+          const selectedCat = btn.getAttribute('data-category') || 'all'; // Default 'all' jika null
+          filterProducts(selectedCat);
+          
+          const produkSection = document.getElementById('produk');
+          if(produkSection) {
+              produkSection.scrollIntoView({ behavior: 'smooth' });
+          }
+      });
+  });
+
+  // Event Listener tombol reset (Cek null dulu)
+  if(resetBtn) {
+      resetBtn.addEventListener('click', () => {
+          filterProducts('all');
+      });
+  }
+</script>
