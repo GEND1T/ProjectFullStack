@@ -15,9 +15,8 @@ try {
 } catch (e) {
     errorMsg = "Error koneksi server.";
 }
-
-const formatRupiah = (num) => "Rp " + parseInt(num).toLocaleString('id-ID');
-const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][idx - 1];
+const formatRupiah = (num: number) => "Rp " + parseInt(String(num)).toLocaleString('id-ID');
+const getMonthName = (idx: number) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][idx - 1];
 ---
 
 <DashboardLayout title="Laporan Tahunan" currentPath="dashboard">
@@ -79,7 +78,7 @@ const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", 
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            {stats.lists.top10Products.map((item, idx) => (
+                            {stats.lists.top10Products.map((item: any, idx:number) => (
                                 <tr class="hover:bg-gray-50">
                                     <td class="p-3 text-center font-bold text-gray-400">{idx + 1}</td>
                                     <td class="p-3 font-medium text-gray-800">{item.PRODUCT_NAME}</td>
@@ -104,16 +103,16 @@ const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", 
                         <button onclick="switchTab('profit')" id="btn-profit" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600">
                             Profit Produk
                         </button>
-                        <button onclick="switchTab('qty')" id="btn-qty" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                        <button onclick="switchTab('qty')" id="btn-qty" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600">
                             Penjualan (Qty)
                         </button>
-                        <button onclick="switchTab('cust-order')" id="btn-cust-order" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                        <button onclick="switchTab('cust-order')" id="btn-cust-order" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600">
                             Freq Customer
                         </button>
-                        <button onclick="switchTab('cust-val')" id="btn-cust-val" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                        <button onclick="switchTab('cust-val')" id="btn-cust-val" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600">
                             Nominal Customer
                         </button>
-                        <button onclick="switchTab('kasir')" id="btn-kasir" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition bg-white">
+                        <button onclick="switchTab('kasir')" id="btn-kasir" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600">
                             Kinerja Kasir
                         </button>
                     </div>
@@ -130,7 +129,7 @@ const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", 
                                 <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Produk</th><th class="p-3 text-right">Profit</th></tr>
                             </thead>
                             <tbody class="divide-y">
-                                {stats.lists.monthlyProductProfit.map(i => (
+                                {stats.lists.monthlyProductProfit.map((i: any) => (
                                     <tr class="hover:bg-gray-50">
                                         <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
                                         <td class="p-3">{i.PRODUCT_NAME}</td>
@@ -150,7 +149,7 @@ const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", 
                                 <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Produk</th><th class="p-3 text-right">Qty Terjual</th></tr>
                             </thead>
                             <tbody class="divide-y">
-                                {stats.lists.monthlyProductQty.map(i => (
+                                {stats.lists.monthlyProductQty.map((i: any) => (
                                     <tr class="hover:bg-gray-50">
                                         <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
                                         <td class="p-3">{i.PRODUCT_NAME}</td>
@@ -170,7 +169,7 @@ const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", 
                                 <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Customer</th><th class="p-3 text-right">Total Transaksi</th></tr>
                             </thead>
                             <tbody class="divide-y">
-                                {stats.lists.monthlyCustOrder.map(i => (
+                                {stats.lists.monthlyCustOrder.map((i: any) => (
                                     <tr class="hover:bg-gray-50">
                                         <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
                                         <td class="p-3">{i.CUST_NAME}</td>
@@ -190,7 +189,7 @@ const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", 
                                 <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Customer</th><th class="p-3 text-right">Total Belanja</th></tr>
                             </thead>
                             <tbody class="divide-y">
-                                {stats.lists.monthlyCustValue.map(i => (
+                                {stats.lists.monthlyCustValue.map((i: any) => (
                                     <tr class="hover:bg-gray-50">
                                         <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
                                         <td class="p-3">{i.CUST_NAME}</td>
@@ -210,7 +209,7 @@ const getMonthName = (idx) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", 
                                 <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Kasir</th><th class="p-3 text-right">Dilayani</th><th class="p-3 w-1/3">Visual</th></tr>
                             </thead>
                             <tbody class="divide-y">
-                                {stats.lists.monthlyCashierService.map(i => (
+                                {stats.lists.monthlyCashierService.map((i: any) => (
                                     <tr class="hover:bg-gray-50">
                                         <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
                                         <td class="p-3 font-bold">{i.USERNAME}</td>
