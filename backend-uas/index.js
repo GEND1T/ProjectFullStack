@@ -10,6 +10,7 @@ const customerRoutes = require('./routers/customerRouters');
 const transaksiRoutes = require('./routers/transaksiRouters');
 const categoryRoutes = require('./routers/categoryRouters.js');
 const authRoutes = require('./routers/authRouters');
+const sbdRouters = require('./routers/sbdRouters.js');
 
 const app = express();
 const PORT = 3000;
@@ -30,6 +31,8 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/transaksi', transaksiRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/auth', authRoutes); 
+app.use("/api/sbd", sbdRouters);
+
 
 
 

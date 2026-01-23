@@ -4,25 +4,85 @@ const API_URL = import.meta.env.PUBLIC_API_URL;
 
 let stats = null;
 let errorMsg = null;
+const currentYear = new Date().getFullYear() - 1; // Tahun lalu
 
 try {
-    const res = await fetch(`${API_URL}/transaksi/stats/advanced`);
-    if (res.ok) {
-        stats = await res.json();
-    } else {
-        errorMsg = "Gagal memuat data statistik tahunan.";
-    }
+  // 1. Jalankan semua fetch secara BERSAMAAN (Paralel)
+  const responses = await Promise.all([
+    fetch(`${API_URL}/sbd/orders/best-product/last-year`),  // index 0
+    fetch(`${API_URL}/sbd/orders/top-customers/last-year`), // index 1
+    fetch(`${API_URL}/sbd/orders/top-order-value/last-year`), // index 2
+    fetch(`${API_URL}/sbd/orders/top-item-buyers/last-year`), // index 3
+    fetch(`${API_URL}/sbd/orders/top-10-products/last-year`), // index 4
+    fetch(`${API_URL}/sbd/profit-bulanan-produk`),            // index 5
+    fetch(`${API_URL}/sbd/penjualan-bulanan-produk`),         // index 6
+    fetch(`${API_URL}/sbd/order-bulanan-customer`),           // index 7
+    fetch(`${API_URL}/sbd/nominal-order-customer`),           // index 8
+    fetch(`${API_URL}/sbd/layanan-bulanan-kasir`)             // index 9
+  ]);
+
+  // 2. Cek apakah ada request yang gagal
+  const allOk = responses.every(r => r.ok);
+
+  if (allOk) {
+    // 3. Convert semua response ke JSON
+    const data = await Promise.all(responses.map(r => r.json()));
+
+    // 4. Masukkan ke variabel stats (Mapping Index Array ke Object Key)
+    stats = {
+      bestProduct: Array.isArray(data[0]) ? data[0][0] : data[0], 
+      topCustomers: Array.isArray(data[1]) ? data[1][0] : data[1],
+      topOrderValue: Array.isArray(data[2]) ? data[2][0] : data[2],
+      topItemBuyers: Array.isArray(data[3]) ? data[3][0] : data[3],
+      
+      // Sisanya biarkan array karena memang untuk tabel/list
+      top10Products: data[4],
+      profitBulanan: data[5],
+      penjualanBulanan: data[6],
+      orderBulananCust: data[7],
+      nominalOrderCust: data[8],
+      layananKasir: data[9]
+    };
+    
+  } else {
+    const failedIndex = responses.findIndex(r => !r.ok);
+    console.error(`Gagal pada URL index ke-${failedIndex}:`, responses[failedIndex]?.url);
+    errorMsg = "Gagal memuat sebagian data statistik tahunan.";
+  }
+
 } catch (e) {
-    errorMsg = "Error koneksi server.";
+  console.error(e);
+  errorMsg = "Error koneksi server: " + (e instanceof Error ? e.message : String(e));
 }
-const formatRupiah = (num: number) => "Rp " + parseInt(String(num)).toLocaleString('id-ID');
-const getMonthName = (idx: number) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][idx - 1];
+
+// ... import dan fetch logic sebelumnya tetap sama ...
+
+// Helper untuk daftar nama bulan sesuai key JSON API Anda
+const monthKeys = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+
+// Helper untuk menghitung total row (karena di JSON tidak ada key total_tahunan)
+const calculateRowTotal = (item : any) => {
+  return monthKeys.reduce((acc, month) => {
+    // Parse angka, jika null/string kosong dianggap 0
+    const val = parseInt(item[month]) || 0;
+    return acc + val;
+  }, 0);
+};
+
+// Helper Format Rupiah Sederhana
+const formatRupiah = (num : any) => "Rp " + (parseInt(num) || 0).toLocaleString('id-ID');
+
+// Helper Functions
+const getMonthName = (idx : any) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][idx - 1] || "-";
 ---
 
 <DashboardLayout title="Laporan Tahunan" currentPath="dashboard">
     <div class="mb-8">
-        <h1 class="text-2xl font-bold text-gray-800">Laporan Kinerja {stats?.year || 'Tahun Lalu'}</h1>
-        <p class="text-gray-500 text-sm"></p>
+        <h1 class="text-2xl font-bold text-gray-800">Laporan Kinerja {currentYear}</h1>
+        <p class="text-gray-500 text-sm">Ringkasan performa bisnis sepanjang tahun lalu</p>
     </div>
 
     {errorMsg && (
@@ -34,39 +94,63 @@ const getMonthName = (idx: number) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     {stats && (
         <div class="space-y-8">
             
+            {/* BAGIAN 1: KARTU HIGHLIGHT (CHAMPIONS) */}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                {/* 1. Produk Terlaris (FIXED: PRODUCT_NAME & total_beli) */}
                 <div class="bg-gradient-to-br from-emerald-50 to-white p-6 rounded-xl border border-emerald-100 shadow-sm relative overflow-hidden">
                     <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">📦</div>
                     <p class="text-xs font-bold text-emerald-600 uppercase mb-2">Produk Paling Laris</p>
-                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_product_qty || 'Belum ada data'}</h3>
-                    <p class="text-xs text-gray-500 mt-1">Berdasarkan total quantity terjual</p>
+                    <h3 class="text-lg font-bold text-gray-800 truncate" title={stats.bestProduct?.PRODUCT_NAME}>
+                        {stats.bestProduct?.PRODUCT_NAME || 'Belum ada data'}
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Terjual <span class="font-bold">{stats.bestProduct?.total_beli || 0}</span> unit
+                    </p>
                 </div>
 
+                {/* 2. Pelanggan Terbaik (Asumsi: CUST_NAME & total_trx / total_item) */}
                 <div class="bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden">
                     <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">🏃</div>
                     <p class="text-xs font-bold text-blue-600 uppercase mb-2">Pelanggan Terbaik</p>
-                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_cust_freq || 'Belum ada data'}</h3>
-                    <p class="text-xs text-gray-500 mt-1">Berdasarkan frekuensi transaksi</p>
+                    <h3 class="text-lg font-bold text-gray-800 truncate">
+                        {stats.topCustomers?.CUST_NAME || 'Belum ada data'}
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {/* Cek ulang nama key di API Anda untuk jumlah transaksi, misal: total_trx */}
+                        Transaksi <span class="font-bold">{stats.topCustomers?.total_order|| 0}</span> kali
+                    </p>
                 </div>
 
+                {/* 3. Pelanggan Sultan (Asumsi: CUST_NAME & total_nominal) */}
                 <div class="bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl border border-purple-100 shadow-sm relative overflow-hidden">
                     <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">👑</div>
                     <p class="text-xs font-bold text-purple-600 uppercase mb-2">Pelanggan Sultan</p>
-                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_cust_val || 'Belum ada data'}</h3>
-                    <p class="text-xs text-gray-500 mt-1">Berdasarkan total nominal uang</p>
+                    <h3 class="text-lg font-bold text-gray-800 truncate">
+                        {stats.topOrderValue?.CUST_NAME || 'Belum ada data'}
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Total <span class="font-bold">{formatRupiah(stats.topOrderValue?.total_belanja)}</span>
+                    </p>
                 </div>
 
+                {/* 4. Pemborong Item (Asumsi: CUST_NAME & total_item / total_beli) */}
                 <div class="bg-gradient-to-br from-orange-50 to-white p-6 rounded-xl border border-orange-100 shadow-sm relative overflow-hidden">
                     <div class="absolute right-0 top-0 p-4 opacity-10 text-6xl">🛍️</div>
                     <p class="text-xs font-bold text-orange-600 uppercase mb-2">Pemborong Item</p>
-                    <h3 class="text-lg font-bold text-gray-800">{stats.champions.top_cust_items || 'Belum ada data'}</h3>
-                    <p class="text-xs text-gray-500 mt-1">Berdasarkan jumlah barang dibeli</p>
+                    <h3 class="text-lg font-bold text-gray-800 truncate">
+                        {stats.topItemBuyers?.CUST_NAME || 'Belum ada data'}
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Membeli <span class="font-bold">{stats.topItemBuyers?.total_item || stats.topItemBuyers?.total_beli || 0}</span> items
+                    </p>
                 </div>
             </div>
 
+            {/* BAGIAN 2: TABEL TOP 10 PRODUK (FIXED) */}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="p-4 bg-gray-50 border-b border-gray-100">
-                    <h3 class="font-bold text-gray-700">Top 10 Produk Terlaris {stats?.year || 'Tahun Lalu'}</h3>
+                    <h3 class="font-bold text-gray-700">Top 10 Produk Terlaris</h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
@@ -78,146 +162,187 @@ const getMonthName = (idx: number) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            {stats.lists.top10Products.map((item: any, idx:number) => (
+                            {stats.top10Products && stats.top10Products.map((item : any, idx : any) => (
                                 <tr class="hover:bg-gray-50">
                                     <td class="p-3 text-center font-bold text-gray-400">{idx + 1}</td>
+                                    {/* Gunakan PRODUCT_NAME */}
                                     <td class="p-3 font-medium text-gray-800">{item.PRODUCT_NAME}</td>
-                                    <td class="p-3 text-right font-bold text-emerald-600">{item.total_qty}</td>
+                                    {/* Gunakan total_beli */}
+                                    <td class="p-3 text-right font-bold text-emerald-600">{item.total_beli}</td>
                                 </tr>
                             ))}
-                            {stats.lists.top10Products.length === 0 && <tr><td colspan="3" class="p-4 text-center text-gray-400">Tidak ada data</td></tr>}
+                            {(!stats.top10Products || stats.top10Products.length === 0) && (
+                                <tr><td colspan="3" class="p-4 text-center text-gray-400">Tidak ada data</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
 
+            {/* BAGIAN 3: ANALISIS BULANAN (TABS) - UPDATED TABLE MATRIX */}
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 
                 <div class="border-b border-gray-100">
                     <div class="p-4 bg-gray-50">
                         <h3 class="font-bold text-gray-700">Analisis Bulanan Detail</h3>
-                        <p class="text-xs text-gray-400">Pilih kategori di bawah untuk melihat data</p>
+                        <p class="text-xs text-gray-400">Data ditampilkan per bulan (Geser ke kanan untuk melihat bulan lain)</p>
                     </div>
                     
-                    <div class="flex flex-wrap gap-2 p-4 bg-white">
-                        <button onclick="switchTab('profit')" id="btn-profit" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600">
-                            Profit Produk
-                        </button>
-                        <button onclick="switchTab('qty')" id="btn-qty" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition  text-gray-600 border-blue-600">
-                            Penjualan (Qty)
-                        </button>
-                        <button onclick="switchTab('cust-order')" id="btn-cust-order" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition  text-gray-600 border-blue-600">
-                            Freq Customer
-                        </button>
-                        <button onclick="switchTab('cust-val')" id="btn-cust-val" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition  text-gray-600 border-blue-600">
-                            Nominal Customer
-                        </button>
-                        <button onclick="switchTab('kasir')" id="btn-kasir" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition  text-gray-600 border-blue-600">
-                            Kinerja Kasir
-                        </button>
+                    {/* Tombol Tab */}
+                    <div class="flex flex-wrap gap-2 p-4 bg-white overflow-x-auto">
+                        <button onclick="switchTab('profit')" id="btn-profit" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition bg-blue-600 text-white border-blue-600 whitespace-nowrap">Profit Produk</button>
+                        <button onclick="switchTab('qty')" id="btn-qty" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition text-gray-600 border-gray-200 bg-white whitespace-nowrap">Penjualan (Qty)</button>
+                        <button onclick="switchTab('cust-order')" id="btn-cust-order" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition text-gray-600 border-gray-200 bg-white whitespace-nowrap">Freq Customer</button>
+                        <button onclick="switchTab('cust-val')" id="btn-cust-val" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition text-gray-600 border-gray-200 bg-white whitespace-nowrap">Nominal Customer</button>
+                        <button onclick="switchTab('kasir')" id="btn-kasir" class="tab-btn px-4 py-2 rounded-lg text-sm font-bold border transition text-gray-600 border-gray-200 bg-white whitespace-nowrap">Kinerja Kasir</button>
                     </div>
                 </div>
 
-                <div class="p-4">
+                <div class="p-0">
                     
-                    <div id="tab-profit" class="tab-content block h-96 overflow-y-auto custom-scrollbar">
-                        <div class="mb-2 p-2 bg-green-50 text-green-700 text-xs rounded border border-green-100 font-medium">
-                            Menampilkan keuntungan (Revenue) per produk setiap bulannya.
-                        </div>
-                        <table class="w-full text-xs">
-                            <thead class="bg-gray-50 sticky top-0">
-                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Produk</th><th class="p-3 text-right">Profit</th></tr>
+                    {/* TAB 1: PROFIT PRODUK */}
+                    <div id="tab-profit" class="tab-content block overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-xs text-left whitespace-nowrap">
+                            <thead class="bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-4 font-bold text-gray-700 bg-gray-50 sticky left-0 z-20 shadow-sm min-w-[200px]">Nama Produk</th>
+                                    {monthKeys.map(m => <th class="p-3 text-center font-semibold text-gray-600 min-w-[100px]">{m}</th>)}
+                                    <th class="p-3 text-right font-bold text-gray-800 bg-gray-100 min-w-[120px]">Total Tahunan</th>
+                                </tr>
                             </thead>
-                            <tbody class="divide-y">
-                                {stats.lists.monthlyProductProfit.map((i: any) => (
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
-                                        <td class="p-3">{i.PRODUCT_NAME}</td>
-                                        <td class="p-3 text-right font-mono text-green-600 font-bold">{formatRupiah(i.total_profit)}</td>
+                            <tbody class="divide-y divide-gray-100">
+                                {stats.profitBulanan?.map((item : any, idx : any) => (
+                                    <tr class="hover:bg-blue-50 transition-colors">
+                                        <td class="p-4 font-medium text-gray-800 sticky left-0 bg-white z-10 shadow-sm border-r border-gray-100">
+                                            {item.product_name}
+                                        </td>
+                                        {monthKeys.map(month => (
+                                            <td class="p-3 text-center text-gray-600 border-r border-gray-50 border-dashed">
+                                                {item[month] ? formatRupiah(item[month]) : '-'}
+                                            </td>
+                                        ))}
+                                        <td class="p-3 text-right font-bold text-emerald-600 bg-gray-50">
+                                            {formatRupiah(calculateRowTotal(item))}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
 
-                    <div id="tab-qty" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
-                         <div class="mb-2 p-2 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100 font-medium">
-                            Menampilkan jumlah item produk yang terjual setiap bulannya.
-                        </div>
-                        <table class="w-full text-xs">
-                            <thead class="bg-gray-50 sticky top-0">
-                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Produk</th><th class="p-3 text-right">Qty Terjual</th></tr>
+                    {/* TAB 2: PENJUALAN (QTY) */}
+                    <div id="tab-qty" class="tab-content hidden overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-xs text-left whitespace-nowrap">
+                            <thead class="bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-4 font-bold text-gray-700 bg-gray-50 sticky left-0 z-20 shadow-sm min-w-[200px]">Nama Produk</th>
+                                    {monthKeys.map(m => <th class="p-3 text-center font-semibold text-gray-600 min-w-[60px]">{m.substring(0,3)}</th>)}
+                                    <th class="p-3 text-center font-bold text-gray-800 bg-gray-100 min-w-[80px]">Total</th>
+                                </tr>
                             </thead>
-                            <tbody class="divide-y">
-                                {stats.lists.monthlyProductQty.map((i: any) => (
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
-                                        <td class="p-3">{i.PRODUCT_NAME}</td>
-                                        <td class="p-3 text-right font-bold text-gray-800">{i.total_qty} Unit</td>
+                            <tbody class="divide-y divide-gray-100">
+                                {stats.penjualanBulanan?.map((item : any) => (
+                                    <tr class="hover:bg-blue-50 transition-colors">
+                                        <td class="p-4 font-medium text-gray-800 sticky left-0 bg-white z-10 shadow-sm border-r border-gray-100">
+                                            {item.product_name}
+                                        </td>
+                                        {monthKeys.map(month => (
+                                            <td class="p-3 text-center text-gray-600 border-r border-gray-50 border-dashed">
+                                                {item[month] ? <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{item[month]}</span> : '-'}
+                                            </td>
+                                        ))}
+                                        <td class="p-3 text-center font-bold text-gray-800 bg-gray-50">
+                                            {calculateRowTotal(item)} Unit
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
 
-                    <div id="tab-cust-order" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
-                        <div class="mb-2 p-2 bg-indigo-50 text-indigo-700 text-xs rounded border border-indigo-100 font-medium">
-                            Menampilkan seberapa sering customer melakukan order per bulan.
-                        </div>
-                        <table class="w-full text-xs">
-                            <thead class="bg-gray-50 sticky top-0">
-                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Customer</th><th class="p-3 text-right">Total Transaksi</th></tr>
+                    {/* TAB 3: FREKUENSI CUSTOMER */}
+                    <div id="tab-cust-order" class="tab-content hidden overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-xs text-left whitespace-nowrap">
+                            <thead class="bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-4 font-bold text-gray-700 bg-gray-50 sticky left-0 z-20 shadow-sm min-w-[200px]">Nama Pelanggan</th>
+                                    {monthKeys.map(m => <th class="p-3 text-center font-semibold text-gray-600 min-w-[60px]">{m.substring(0,3)}</th>)}
+                                    <th class="p-3 text-center font-bold text-gray-800 bg-gray-100 min-w-[80px]">Total Trx</th>
+                                </tr>
                             </thead>
-                            <tbody class="divide-y">
-                                {stats.lists.monthlyCustOrder.map((i: any) => (
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
-                                        <td class="p-3">{i.CUST_NAME}</td>
-                                        <td class="p-3 text-right font-bold text-blue-600">{i.total_trx}x Order</td>
+                            <tbody class="divide-y divide-gray-100">
+                                {stats.orderBulananCust?.map((item : any) => (
+                                    <tr class="hover:bg-blue-50 transition-colors">
+                                        <td class="p-4 font-medium text-gray-800 sticky left-0 bg-white z-10 shadow-sm border-r border-gray-100">
+                                            {item.customer_name}
+                                        </td>
+                                        {monthKeys.map(month => (
+                                            <td class="p-3 text-center text-gray-600 border-r border-gray-50 border-dashed">
+                                                {item[month] || '-'}
+                                            </td>
+                                        ))}
+                                        <td class="p-3 text-center font-bold text-blue-600 bg-gray-50">
+                                            {calculateRowTotal(item)}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
 
-                    <div id="tab-cust-val" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
-                         <div class="mb-2 p-2 bg-purple-50 text-purple-700 text-xs rounded border border-purple-100 font-medium">
-                            Menampilkan total uang yang dibelanjakan customer per bulan.
-                        </div>
-                        <table class="w-full text-xs">
-                            <thead class="bg-gray-50 sticky top-0">
-                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Customer</th><th class="p-3 text-right">Total Belanja</th></tr>
+                    {/* TAB 4: NOMINAL CUSTOMER */}
+                    <div id="tab-cust-val" class="tab-content hidden overflow-x-auto custom-scrollbar">
+                         <table class="w-full text-xs text-left whitespace-nowrap">
+                            <thead class="bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-4 font-bold text-gray-700 bg-gray-50 sticky left-0 z-20 shadow-sm min-w-[200px]">Nama Pelanggan</th>
+                                    {monthKeys.map(m => <th class="p-3 text-center font-semibold text-gray-600 min-w-[100px]">{m}</th>)}
+                                    <th class="p-3 text-right font-bold text-gray-800 bg-gray-100 min-w-[120px]">Total Belanja</th>
+                                </tr>
                             </thead>
-                            <tbody class="divide-y">
-                                {stats.lists.monthlyCustValue.map((i: any) => (
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
-                                        <td class="p-3">{i.CUST_NAME}</td>
-                                        <td class="p-3 text-right font-mono text-purple-600 font-bold">{formatRupiah(i.total_nominal)}</td>
+                            <tbody class="divide-y divide-gray-100">
+                                {stats.nominalOrderCust?.map((item : any) => (
+                                    <tr class="hover:bg-blue-50 transition-colors">
+                                        <td class="p-4 font-medium text-gray-800 sticky left-0 bg-white z-10 shadow-sm border-r border-gray-100">
+                                            {item.CUST_NAME}
+                                        </td>
+                                        {monthKeys.map(month => (
+                                            <td class="p-3 text-center text-gray-600 border-r border-gray-50 border-dashed">
+                                                {item[month] ? formatRupiah(item[month]) : '-'}
+                                            </td>
+                                        ))}
+                                        <td class="p-3 text-right font-bold text-purple-600 bg-gray-50">
+                                            {formatRupiah(calculateRowTotal(item))}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
 
-                    <div id="tab-kasir" class="tab-content hidden h-96 overflow-y-auto custom-scrollbar">
-                         <div class="mb-2 p-2 bg-orange-50 text-orange-700 text-xs rounded border border-orange-100 font-medium">
-                            Menampilkan kinerja kasir dalam melayani transaksi per bulan.
-                        </div>
-                        <table class="w-full text-xs">
-                            <thead class="bg-gray-50 sticky top-0">
-                                <tr><th class="p-3 text-left">Bulan</th><th class="p-3 text-left">Kasir</th><th class="p-3 text-right">Dilayani</th><th class="p-3 w-1/3">Visual</th></tr>
+                    {/* TAB 5: KINERJA KASIR */}
+                    <div id="tab-kasir" class="tab-content hidden overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-xs text-left whitespace-nowrap">
+                            <thead class="bg-gray-50 sticky top-0 z-10 border-b border-gray-200">
+                                <tr>
+                                    <th class="p-4 font-bold text-gray-700 bg-gray-50 sticky left-0 z-20 shadow-sm min-w-[200px]">Nama Kasir</th>
+                                    {monthKeys.map(m => <th class="p-3 text-center font-semibold text-gray-600 min-w-[60px]">{m.substring(0,3)}</th>)}
+                                    <th class="p-3 text-center font-bold text-gray-800 bg-gray-100 min-w-[80px]">Total Trx</th>
+                                </tr>
                             </thead>
-                            <tbody class="divide-y">
-                                {stats.lists.monthlyCashierService.map((i: any) => (
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="p-3 font-bold text-gray-500 w-20">{getMonthName(i.bulan)}</td>
-                                        <td class="p-3 font-bold">{i.USERNAME}</td>
-                                        <td class="p-3 text-right">{i.total_service} Trx</td>
-                                        <td class="p-3">
-                                            <div class="bg-gray-100 h-2 rounded-full w-full overflow-hidden">
-                                                <div class="bg-orange-500 h-2 rounded-full" style={`width: ${Math.min(i.total_service * 5, 100)}%`}></div>
-                                            </div>
+                            <tbody class="divide-y divide-gray-100">
+                                {stats.layananKasir?.map((item : any) => (
+                                    <tr class="hover:bg-blue-50 transition-colors">
+                                        <td class="p-4 font-medium text-gray-800 sticky left-0 bg-white z-10 shadow-sm border-r border-gray-100">
+                                            {item.cashier_name}
+                                        </td>
+                                        {monthKeys.map(month => (
+                                            <td class="p-3 text-center text-gray-600 border-r border-gray-50 border-dashed">
+                                                {item[month] || '-'}
+                                            </td>
+                                        ))}
+                                        <td class="p-3 text-center font-bold text-orange-600 bg-gray-50">
+                                            {calculateRowTotal(item)}
                                         </td>
                                     </tr>
                                 ))}
@@ -227,13 +352,13 @@ const getMonthName = (idx: number) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
 
                 </div>
             </div>
-
         </div>
     )}
+    
 </DashboardLayout>
 
 <script is:inline>
-    // Fungsi untuk ganti Tab
+    // Fungsi untuk ganti Tab (Vanilla JS)
     window.switchTab = function(tabName) {
         // 1. Sembunyikan semua konten tab
         const allContents = document.querySelectorAll('.tab-content');
@@ -243,10 +368,12 @@ const getMonthName = (idx: number) => ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
         const selectedContent = document.getElementById('tab-' + tabName);
         if(selectedContent) selectedContent.classList.remove('hidden');
 
-        // 3. Reset style tombol
+        // 3. Reset style semua tombol
         const allButtons = document.querySelectorAll('.tab-btn');
         allButtons.forEach(btn => {
+            // Hapus style aktif (biru)
             btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+            // Tambah style tidak aktif (putih/abu)
             btn.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
         });
 
