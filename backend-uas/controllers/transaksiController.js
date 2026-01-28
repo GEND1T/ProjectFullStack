@@ -283,125 +283,171 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 
-exports.getAdvancedStats = async (req, res) => {
+// exports.getAdvancedStats = async (req, res) => {
+//     try {
+//         const connection = await db.getConnection();
+        
+//         // Filter Tahun Sebelumnya (Contoh: Jika sekarang 2026, ambil 2025)
+//         // Jika ingin test data tahun ini, ubah "- 1" menjadi "- 0"
+//         const prevYearCondition = "YEAR(o.ORDER_DATE) = YEAR(CURDATE()) - 1";
+
+//         const [champions] = await connection.query(`
+//             SELECT 
+//                 -- 1. Produk Paling Banyak Dibeli (Qty)
+//                 (SELECT CONCAT(p.PRODUCT_NAME, ' (', SUM(od.QTY), ' item)')
+//                  FROM order_details od 
+//                  JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+//                  JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+//                  WHERE ${prevYearCondition}
+//                  GROUP BY p.PRODUCT_ID 
+//                  ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_product_qty,
+
+//                 -- 2. Customer Paling Sering Order (Frekuensi)
+//                 (SELECT CONCAT(c.CUST_NAME, ' (', COUNT(o.ORDER_ID), ' order)')
+//                  FROM orders o
+//                  JOIN customers c ON o.CUST_ID = c.CUST_ID
+//                  WHERE ${prevYearCondition}
+//                  GROUP BY c.CUST_ID
+//                  ORDER BY COUNT(o.ORDER_ID) DESC LIMIT 1) AS top_cust_freq,
+
+//                 -- 3. Customer Nilai Order Terbesar (Nominal)
+//                 (SELECT CONCAT(c.CUST_NAME, ' (Rp ', FORMAT(SUM(o.TOTAL), 0), ')')
+//                  FROM orders o
+//                  JOIN customers c ON o.CUST_ID = c.CUST_ID
+//                  WHERE ${prevYearCondition}
+//                  GROUP BY c.CUST_ID
+//                  ORDER BY SUM(o.TOTAL) DESC LIMIT 1) AS top_cust_val,
+
+//                 -- 4. Customer Item Terbanyak (Jumlah Produk)
+//                 (SELECT CONCAT(c.CUST_NAME, ' (', SUM(od.QTY), ' item)')
+//                  FROM order_details od
+//                  JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+//                  JOIN customers c ON o.CUST_ID = c.CUST_ID
+//                  WHERE ${prevYearCondition}
+//                  GROUP BY c.CUST_ID
+//                  ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_cust_items
+//         `);
+
+//         const [top10Products] = await connection.query(`
+//             SELECT p.PRODUCT_NAME, SUM(od.QTY) as total_qty
+//             FROM order_details od 
+//             JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+//             JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+//             WHERE ${prevYearCondition}
+//             GROUP BY p.PRODUCT_ID 
+//             ORDER BY total_qty DESC LIMIT 10
+//         `);
+
+//         const [monthlyProductProfit] = await connection.query(`
+//             SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.SUBTOTAL) as total_profit
+//             FROM order_details od 
+//             JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+//             JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+//             WHERE ${prevYearCondition}
+//             GROUP BY p.PRODUCT_ID, bulan
+//             ORDER BY bulan ASC, total_profit DESC 
+//         `);
+
+//         const [monthlyProductQty] = await connection.query(`
+//             SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.QTY) as total_qty
+//             FROM order_details od 
+//             JOIN orders o ON od.ORDER_ID = o.ORDER_ID
+//             JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+//             WHERE ${prevYearCondition}
+//             GROUP BY p.PRODUCT_ID, bulan
+//             ORDER BY bulan ASC, total_qty DESC 
+//         `);
+
+//         const [monthlyCustOrder] = await connection.query(`
+//             SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_trx
+//             FROM orders o 
+//             JOIN customers c ON o.CUST_ID = c.CUST_ID
+//             WHERE ${prevYearCondition}
+//             GROUP BY c.CUST_ID, bulan
+//             ORDER BY bulan ASC, total_trx DESC 
+//         `);
+
+//         const [monthlyCustValue] = await connection.query(`
+//             SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(o.TOTAL) as total_nominal
+//             FROM orders o 
+//             JOIN customers c ON o.CUST_ID = c.CUST_ID
+//             WHERE ${prevYearCondition}
+//             GROUP BY c.CUST_ID, bulan
+//             ORDER BY bulan ASC, total_nominal DESC 
+//         `);
+
+//         const [monthlyCashierService] = await connection.query(`
+//             SELECT k.USERNAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_service
+//             FROM orders o 
+//             JOIN cashiers k ON o.USER_ID = k.USER_ID
+//             WHERE ${prevYearCondition}
+//             GROUP BY k.USER_ID, bulan
+//             ORDER BY bulan ASC, total_service DESC 
+//         `);
+
+//         connection.release();
+
+//         res.json({
+//             year: new Date().getFullYear() - 1, 
+//             champions: champions[0],
+//             lists: {
+//                 top10Products,
+//                 monthlyProductProfit,
+//                 monthlyProductQty,
+//                 monthlyCustOrder,
+//                 monthlyCustValue,
+//                 monthlyCashierService
+//             }
+//         });
+
+//     } catch (error) {
+//         console.error("Advanced Stats Error:", error);
+//         res.status(500).json({ message: 'Server Error', error });
+//     }
+// };
+
+// AMBIL HISTORY SPESIFIK BY CUSTOMER ID
+exports.getCustomerHistoryById = async (req, res) => {
+    const { id } = req.params; // Ambil ID dari URL
     try {
         const connection = await db.getConnection();
         
-        // Filter Tahun Sebelumnya (Contoh: Jika sekarang 2026, ambil 2025)
-        // Jika ingin test data tahun ini, ubah "- 1" menjadi "- 0"
-        const prevYearCondition = "YEAR(o.ORDER_DATE) = YEAR(CURDATE()) - 1";
-
-        const [champions] = await connection.query(`
+        const [rows] = await connection.query(`
             SELECT 
-                -- 1. Produk Paling Banyak Dibeli (Qty)
-                (SELECT CONCAT(p.PRODUCT_NAME, ' (', SUM(od.QTY), ' item)')
-                 FROM order_details od 
-                 JOIN orders o ON od.ORDER_ID = o.ORDER_ID
-                 JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
-                 WHERE ${prevYearCondition}
-                 GROUP BY p.PRODUCT_ID 
-                 ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_product_qty,
-
-                -- 2. Customer Paling Sering Order (Frekuensi)
-                (SELECT CONCAT(c.CUST_NAME, ' (', COUNT(o.ORDER_ID), ' order)')
-                 FROM orders o
-                 JOIN customers c ON o.CUST_ID = c.CUST_ID
-                 WHERE ${prevYearCondition}
-                 GROUP BY c.CUST_ID
-                 ORDER BY COUNT(o.ORDER_ID) DESC LIMIT 1) AS top_cust_freq,
-
-                -- 3. Customer Nilai Order Terbesar (Nominal)
-                (SELECT CONCAT(c.CUST_NAME, ' (Rp ', FORMAT(SUM(o.TOTAL), 0), ')')
-                 FROM orders o
-                 JOIN customers c ON o.CUST_ID = c.CUST_ID
-                 WHERE ${prevYearCondition}
-                 GROUP BY c.CUST_ID
-                 ORDER BY SUM(o.TOTAL) DESC LIMIT 1) AS top_cust_val,
-
-                -- 4. Customer Item Terbanyak (Jumlah Produk)
-                (SELECT CONCAT(c.CUST_NAME, ' (', SUM(od.QTY), ' item)')
-                 FROM order_details od
-                 JOIN orders o ON od.ORDER_ID = o.ORDER_ID
-                 JOIN customers c ON o.CUST_ID = c.CUST_ID
-                 WHERE ${prevYearCondition}
-                 GROUP BY c.CUST_ID
-                 ORDER BY SUM(od.QTY) DESC LIMIT 1) AS top_cust_items
-        `);
-
-        const [top10Products] = await connection.query(`
-            SELECT p.PRODUCT_NAME, SUM(od.QTY) as total_qty
-            FROM order_details od 
-            JOIN orders o ON od.ORDER_ID = o.ORDER_ID
-            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
-            WHERE ${prevYearCondition}
-            GROUP BY p.PRODUCT_ID 
-            ORDER BY total_qty DESC LIMIT 10
-        `);
-
-        const [monthlyProductProfit] = await connection.query(`
-            SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.SUBTOTAL) as total_profit
-            FROM order_details od 
-            JOIN orders o ON od.ORDER_ID = o.ORDER_ID
-            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
-            WHERE ${prevYearCondition}
-            GROUP BY p.PRODUCT_ID, bulan
-            ORDER BY bulan ASC, total_profit DESC 
-        `);
-
-        const [monthlyProductQty] = await connection.query(`
-            SELECT p.PRODUCT_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(od.QTY) as total_qty
-            FROM order_details od 
-            JOIN orders o ON od.ORDER_ID = o.ORDER_ID
-            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
-            WHERE ${prevYearCondition}
-            GROUP BY p.PRODUCT_ID, bulan
-            ORDER BY bulan ASC, total_qty DESC 
-        `);
-
-        const [monthlyCustOrder] = await connection.query(`
-            SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_trx
-            FROM orders o 
+                c.CUST_NAME,
+                c.EMAIL,
+                MONTH(o.ORDER_DATE) as month,
+                YEAR(o.ORDER_DATE) as year,
+                GROUP_CONCAT(CONCAT(p.PRODUCT_NAME, ' (', od.QTY, ')') SEPARATOR ', ') as product_list,
+                SUM(o.TOTAL) as total_spent,
+                COUNT(o.ORDER_ID) as trx_count
+            FROM orders o
             JOIN customers c ON o.CUST_ID = c.CUST_ID
-            WHERE ${prevYearCondition}
-            GROUP BY c.CUST_ID, bulan
-            ORDER BY bulan ASC, total_trx DESC 
-        `);
-
-        const [monthlyCustValue] = await connection.query(`
-            SELECT c.CUST_NAME, MONTH(o.ORDER_DATE) as bulan, SUM(o.TOTAL) as total_nominal
-            FROM orders o 
-            JOIN customers c ON o.CUST_ID = c.CUST_ID
-            WHERE ${prevYearCondition}
-            GROUP BY c.CUST_ID, bulan
-            ORDER BY bulan ASC, total_nominal DESC 
-        `);
-
-        const [monthlyCashierService] = await connection.query(`
-            SELECT k.USERNAME, MONTH(o.ORDER_DATE) as bulan, COUNT(o.ORDER_ID) as total_service
-            FROM orders o 
-            JOIN cashiers k ON o.USER_ID = k.USER_ID
-            WHERE ${prevYearCondition}
-            GROUP BY k.USER_ID, bulan
-            ORDER BY bulan ASC, total_service DESC 
-        `);
+            JOIN order_details od ON o.ORDER_ID = od.ORDER_ID
+            JOIN products p ON od.PRODUCT_ID = p.PRODUCT_ID
+            WHERE o.ORDER_STATUS = 'COMPLETED' AND c.CUST_ID = ?
+            GROUP BY year, month
+            ORDER BY year DESC, month DESC
+        `, [id]);
 
         connection.release();
 
+        // Jika data kosong, kita cek nama customernya saja agar header halaman tidak "undefined"
+        let customerInfo = {};
+        if (rows.length === 0) {
+            const [cust] = await db.query("SELECT CUST_NAME, EMAIL FROM customers WHERE CUST_ID = ?", [id]);
+            if (cust.length > 0) customerInfo = cust[0];
+        } else {
+            customerInfo = { CUST_NAME: rows[0].CUST_NAME, EMAIL: rows[0].EMAIL };
+        }
+
         res.json({
-            year: new Date().getFullYear() - 1, 
-            champions: champions[0],
-            lists: {
-                top10Products,
-                monthlyProductProfit,
-                monthlyProductQty,
-                monthlyCustOrder,
-                monthlyCustValue,
-                monthlyCashierService
-            }
+            customer: customerInfo,
+            history: rows
         });
 
     } catch (error) {
-        console.error("Advanced Stats Error:", error);
+        console.error("Error Detail History:", error);
         res.status(500).json({ message: 'Server Error', error });
     }
 };

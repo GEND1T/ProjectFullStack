@@ -1,0 +1,116 @@
+---
+import DashboardLayout from '../../../../layouts/DashboardLayout.astro';
+const API_URL = import.meta.env.PUBLIC_API_URL;
+
+const { id } = Astro.params;
+
+let customer = { CUST_NAME: 'Loading...', EMAIL: '-' };
+let history = [];
+let errorMsg = null;
+
+try {
+    const res = await fetch(`${API_URL}/transaksi/customers/${id}/history`);
+    if (res.ok) {
+        const data = await res.json();
+        customer = data.customer;
+        history = data.history;
+    } else {
+        errorMsg = "Data pelanggan tidak ditemukan.";
+    }
+} catch (e) {
+    errorMsg = "Gagal terhubung ke server.";
+}
+
+const getMonthName = (idx : any ) => ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][idx - 1];
+const formatRupiah = (num : any ) => "Rp " + parseInt(num).toLocaleString('id-ID');
+---
+
+<head>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+</head>
+
+<DashboardLayout title={`Riwayat - ${customer.CUST_NAME}`} currentPath="customers">
+    
+    <div class="mb-8 bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                <a href="/admin/customers" class="hover:text-blue-600 transition">Customers</a>
+                <span class="material-icons-outlined text-[12px]">chevron_right</span>
+                <span>Riwayat Belanja</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">{customer.CUST_NAME}</h1>
+            <p class="text-gray-500 flex items-center gap-1 text-sm">
+                <span class="material-icons-outlined text-[14px]">email</span>
+                {customer.EMAIL || 'Email tidak tersedia'}
+            </p>
+        </div>
+        <a href="/admin/customers" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition flex items-center gap-2">
+            <span class="material-icons-outlined text-[16px]">arrow_back</span> Kembali
+        </a>
+    </div>
+
+    {errorMsg && (
+        <div class="bg-red-50 text-red-600 p-4 rounded-lg border border-red-100 mb-6 flex items-center gap-2">
+            <span class="material-icons-outlined">error_outline</span> {errorMsg}
+        </div>
+    )}
+
+    <div class="max">
+        <div class="relative border-l-2 border-gray-200 ml-3 md:ml-6 space-y-8 pb-12">
+            
+            {history.length > 0 ? history.map((item : any ) => (
+                <div class="relative pl-8 md:pl-12 group">
+                    
+                    <div class="absolute -left-[9px] top-0 bg-white border-4 border-blue-100 rounded-full w-5 h-5 flex items-center justify-center">
+                        <div class="w-2.5 h-2.5 bg-blue-600 rounded-full"></div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                        
+                        <div class="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center flex-wrap gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="material-icons-outlined text-blue-600">calendar_month</span>
+                                <div>
+                                    <h3 class="font-bold text-gray-800 text-lg leading-none">
+                                        {getMonthName(item.month)} {item.year}
+                                    </h3>
+                                    <span class="text-xs text-gray-500 font-medium">
+                                        {item.trx_count}x Transaksi Selesai
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Belanja</span>
+                                <span class="font-mono font-bold text-emerald-600 text-lg">
+                                    {formatRupiah(item.total_spent)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="p-5">
+                            <p class="text-xs font-bold text-gray-400 mb-3 uppercase flex items-center gap-1">
+                                <span class="material-icons-outlined text-[14px]">shopping_bag</span> Produk Dibeli:
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                {item.product_list.split(', ').map((prod : any) => (
+                                    <span class="inline-flex items-center gap-1 bg-white border border-gray-200 text-gray-600 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
+                                        {prod}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )) : (
+                <div class="pl-8 md:pl-12">
+                    <div class="bg-white p-8 rounded-xl border-2 border-dashed border-gray-200 text-center">
+                        <span class="material-icons-outlined text-4xl text-gray-300 mb-2 block">receipt_long</span>
+                        <p class="text-gray-500 font-medium">Belum ada riwayat transaksi.</p>
+                    </div>
+                </div>
+            )}
+
+        </div>
+    </div>
+
+</DashboardLayout>

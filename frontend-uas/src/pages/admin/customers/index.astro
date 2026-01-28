@@ -16,6 +16,8 @@ try {
             + Tambah Pelanggan
         </a>
     </div>
+
+    
     <div class="mb-4 relative">
         <input type="text" id="simpleSearch" placeholder="Cari nama atau data..." 
                class="w-full pl-4 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
@@ -44,8 +46,18 @@ try {
                         <td class="p-4 truncate max-w-xs">{c.address}</td>
                         <td class="p-4 text-center">
                             <div class="flex justify-center gap-2">
-                                <a href={`/admin/customers/edit/${c.id}`} class="bg-amber-400 text-white px-3 py-1.5 rounded text-xs">Edit</a>
-                                <button class="bg-red-500 text-white px-3 py-1.5 rounded text-xs" onclick={`deleteCust('${c.id}')`}>Hapus</button>
+
+                                <a href={`/admin/customers/history/${c.id}`} class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1">
+                                    <span class="material-icons-outlined text-[14px]">history</span>
+                                </a>
+                            
+                                <a href={`/admin/customers/edit/${c.id}`} class="bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1.5 rounded text-xs font-bold transition">
+                                    Edit
+                                </a>
+
+                                <button class="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded text-xs font-bold transition" onclick={`deleteCust('${c.id}')`}>
+                                    Hapus
+                                </button>
                             </div>
                         </td>
                     </tr>
